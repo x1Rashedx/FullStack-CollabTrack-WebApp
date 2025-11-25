@@ -1,0 +1,10 @@
+{
+  "name": "CollabTrack - Project Management Tool",
+  "short_name": "CollabTrack",
+  "description": "A professional-grade, interactive project management tool with customizable Kanban boards, a project dashboard, real-time team chat, a calendar view, task dependencies, and member management. Features a polished UI with enhanced drag-and-drop animations, smart tag suggestions, and in-task commenting.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "requestFramePermissions": []
+}
