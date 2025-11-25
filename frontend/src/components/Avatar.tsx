@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { User } from '../types';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface AvatarProps {
     user: User | null | undefined;
@@ -17,19 +19,22 @@ const getInitials = (name: string = '') => {
 };
 
 const Avatar: React.FC<AvatarProps> = ({ user, className = 'h-8 w-8', title }) => {
+    const [imageError, setImageError] = useState(false);
+    
     if (!user) {
         return <div className={`${className} rounded-full bg-gray-300 dark:bg-gray-600`} />;
     }
     
     const finalTitle = title || user.name || 'User';
 
-    if (user.avatarUrl) {
+    if (user.avatarUrl && !imageError) {
         return (
             <img
-                src={user.avatarUrl}
+                src={`${API_URL}/media/${user.avatarUrl}`}
                 alt={user.name || 'User avatar'}
                 title={finalTitle}
                 className={`${className} rounded-full object-cover`}
+                onError={() => setImageError(true)}
             />
         );
     }

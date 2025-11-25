@@ -430,8 +430,8 @@ function App() {
     
     const clearTaskToOpen = () => setTaskToOpen(null);
 
-    const handleUpdateUser = (updateUser: User) => {
-        api.updateUser(updateUser)
+    const handleUpdateUser = (updateUser: User, avatarFile?: File) => {
+        api.updateUser(updateUser, avatarFile)
             .then((updatedUser) => {
                 setUsers(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
                 if (currentUser && currentUser.id === updatedUser.id) {

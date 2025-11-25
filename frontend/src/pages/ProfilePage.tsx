@@ -4,20 +4,21 @@ import type { User, Project } from '../types';
 import { Mail, Briefcase, Calendar, Sun, Moon, Phone, User as UserIcon, Camera } from 'lucide-react';
 import Avatar from '../components/Avatar';
 import ImageCropperModal from '../components/ImageCropperModal';
-import imageCompression from "browser-image-compression";
+import imageCompression from 'browser-image-compression';
 
 interface ProfilePageProps {
     currentUser: User;
     projects: Project[];
     isDarkMode: boolean;
     onToggleTheme: () => void;
-    onUpdateUser: (user: User) => void;
+    onUpdateUser: (user: User, avatarFile?: File) => void;
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, projects, isDarkMode, onToggleTheme, onUpdateUser }) => {
     const [formState, setFormState] = useState(currentUser);
     const [isDirty, setIsDirty] = useState(false);
     const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -31,46 +32,21 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, projects, isDark
     };
 
     const handleSave = () => {
-        onUpdateUser(formState);
+        console.log("Saving user profile", formState, avatarFile);
+        onUpdateUser(formState, avatarFile || undefined);
         setIsDirty(false);
+        setAvatarFile(null);
     };
 
     const handleCancel = () => {
         setFormState(currentUser);
         setIsDirty(false);
+        setAvatarFile(null);
     };
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
     };
-
-    const base64ToBlob = (base64: string, mime = "image/jpeg") => {
-        const byteString = atob(base64.split(",")[1]);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        return new Blob([ab], { type: mime });
-    }
-
-    // Compress base64 image
-    const compressBase64 = async (base64: string, maxSizeMB = 0.01, maxWidthOrHeight = 128) => {
-        const blob = base64ToBlob(base64);
-
-        // Convert Blob to File so that imageCompression has a name
-        const file = new File([blob], 'image.png', { type: blob.type });
-
-        const compressedBlob = await imageCompression(file, {
-            maxSizeMB,
-            maxWidthOrHeight,
-            useWebWorker: true,
-        });
-
-        // Convert compressed Blob back to base64
-        const compressedBase64 = await imageCompression.getDataUrlFromFile(compressedBlob);
-        return compressedBase64;
-    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -85,11 +61,37 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, projects, isDark
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const compressImage = async (file: File): Promise<File> => {
+        try {
+            const options = {
+                maxSizeMB: 0.1,
+                maxWidthOrHeight: 256,
+                useWebWorker: true,
+            };
+            const compressedBlob = await imageCompression(file, options);
+            return new File([compressedBlob], file.name, { type: 'image/jpeg' });
+        } catch (error) {
+            console.error('Image compression failed:', error);
+            return file; // Return original file if compression fails
+        }
+    };
+
     const handleCropComplete = async (croppedUrl: string) => {
-
-        const compressedUrl = await compressBase64(croppedUrl)
-
-        setFormState(prev => ({ ...prev, avatarUrl: compressedUrl }));
+        // Convert base64 string to Blob, then to File
+        const base64Data = croppedUrl.split(',')[1]; // Remove data:image/...;base64, prefix
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'image/jpeg' });
+        let file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+        
+        // Compress the image before setting it
+        file = await compressImage(file);
+        
+        setAvatarFile(file);
+        setFormState(prev => ({ ...prev, avatarUrl: croppedUrl }));
         setIsDirty(true);
         setUploadedImage(null);
     };

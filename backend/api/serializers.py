@@ -8,21 +8,35 @@ from .utils import compress_base64_image
 
 User = get_user_model()
 
-class UserSerializer(serializers.ModelSerializer):
+class NestedUserSerializer(serializers.ModelSerializer):
+    """Lean user serializer for nested user data (assignees, authors, etc.)"""
     id = serializers.UUIDField(read_only=True)
-    avatarUrl = serializers.CharField(source="avatar_url", allow_null=True, required=False)
+    avatarUrl = serializers.ImageField(source='avatar', use_url=False, read_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "name", "avatarUrl", "email", "phone", "gender"]
+        fields = ["id", "name", "avatarUrl"]
+
+
+class UserSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
+    avatarUrl = serializers.ImageField(source='avatar', use_url=False, read_only=True)
+    avatar = serializers.ImageField(use_url=False, required=False, allow_null=True, write_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "name", "avatarUrl", "email", "phone", "gender", "avatar"]
 
     def update(self, instance, validated_data):
-
-        avatar = validated_data.get("avatar_url")
-
-        if avatar and avatar.startswith("data:image"):
-            compressed = compress_base64_image(avatar)
-            validated_data["avatar_url"] = compressed
+        # Handle avatar updates
+        avatar = validated_data.get("avatar")
+        
+        if avatar:
+            # If it's a string (legacy base64), convert it
+            if isinstance(avatar, str) and avatar.startswith("data:image"):
+                compressed = compress_base64_image(avatar)
+                validated_data["avatar"] = compressed
+            # Otherwise it's already a File object from form upload
 
         return super().update(instance, validated_data)
 
@@ -50,7 +64,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
+    author = NestedUserSerializer(read_only=True)
     timestamp = serializers.DateTimeField(source="timestamp", read_only=True)
     author_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, source="author", required=False)
 
@@ -60,7 +74,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    assignees = UserSerializer(many=True, read_only=True)
+    assignees = NestedUserSerializer(many=True, read_only=True)
     assigneeIds = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True, source="assignees", required=False)
 
     attachments = AttachmentSerializer(many=True, read_only=True)
@@ -128,7 +142,7 @@ class ColumnSerializer(serializers.ModelSerializer):
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
+    author = NestedUserSerializer(read_only=True)
     timestamp = serializers.DateTimeField(read_only=True)
     class Meta:
         model = ChatMessage
@@ -136,7 +150,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = NestedUserSerializer(read_only=True)
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, source="user")
     class Meta:
         model = TeamMember
