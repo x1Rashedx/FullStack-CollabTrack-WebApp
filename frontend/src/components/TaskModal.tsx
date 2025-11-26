@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Tag, Paperclip, MessageSquare, Trash2, User as UserIcon, Plus, UploadCloud, CheckCircle, BarChart2, Target, Save } from 'lucide-react';
 import type { Task, User, Comment, Attachment } from '../types';
 import Avatar from './Avatar';
+import { createTaskComment, uploadTaskAttachment, deleteAttachment } from '../api';
 import CustomDatePicker from './CustomDatePicker';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -29,6 +30,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
     const [isAddingTag, setIsAddingTag] = useState(false);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    // Queue files added in the modal until user clicks Save Changes
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     
     // Assignee Picker State
@@ -38,8 +42,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
     const assigneeButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
+        if (hasUnsavedChanges) return;
         setEditableTask(task);
-        setHasUnsavedChanges(false);
     }, [task]);
 
     useEffect(() => {
@@ -60,10 +64,39 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
         setHasUnsavedChanges(true);
     };
 
-    const handleSaveChanges = () => {
-        onUpdateTask(editableTask);
-        setHasUnsavedChanges(false);
-        onClose();
+    const handleSaveChanges = async () => {
+        setIsSaving(true);
+        try {
+            // If there are pending files, upload them first
+            let updatedTask = { ...editableTask, assigneeIds: editableTask.assignees.map(a => a.id) };
+
+            if (pendingFiles.length > 0) {
+                // Create a copy to iterate so we can mutate pendingFiles during uploads
+                const toUpload = [...pendingFiles];
+                for (const f of toUpload) {
+                    try {
+                        const res = await uploadTaskAttachment(task.id, f);
+                        const newAtts = Array.isArray(res) ? res : [res];
+                        updatedTask.attachments = [...(updatedTask.attachments || []), ...newAtts];
+
+                        // Update UI immediately with the newly uploaded attachment(s)
+                        setEditableTask({ ...updatedTask });
+
+                        // Remove this file from the pending queue as soon as it's uploaded
+                        setPendingFiles(prev => prev.filter(p => !(p.name === f.name && p.size === f.size && p.lastModified === f.lastModified)));
+                    } catch (err) {
+                        console.error('Attachment upload failed', err);
+                    }
+                }
+            }
+
+            // After uploads, ensure final task state is propagated
+            setEditableTask(updatedTask);
+            onUpdateTask(updatedTask);
+            setHasUnsavedChanges(false);
+        } finally {
+            setIsSaving(false);
+        }
     };
     
     const handleDeleteClick = () => {
@@ -77,18 +110,17 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
     
     const handleAddComment = () => {
         if (!newComment.trim()) return;
-        const comment: Comment = {
-            id: `comment-${Date.now()}`,
-            author: currentUser,
-            content: newComment.trim(),
-            timestamp: new Date().toISOString(),
-        };
-        // Comments are added immediately, persisting the current state of the task as well
-        const updatedComments = [...editableTask.comments, comment];
-        const updatedTask = { ...editableTask, comments: updatedComments };
-        setEditableTask(updatedTask);
-        onUpdateTask(updatedTask);
-        setNewComment('');
+        const content = newComment.trim();
+        // send to backend
+        createTaskComment(task.id, content).then(created => {
+            const updatedComments = [...editableTask.comments, created];
+            const updatedTask = { ...editableTask, comments: updatedComments };
+            setEditableTask(updatedTask);
+            onUpdateTask(updatedTask);
+            setNewComment('');
+        }).catch(err => {
+            console.error('Failed to post comment', err);
+        });
     };
     
     const handleAddTag = () => {
@@ -141,18 +173,27 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
     };
 
     const handleAddAttachments = (files: FileList) => {
-        const newAttachments: Attachment[] = Array.from(files).map((file, index) => ({
-            id: `att-${Date.now()}-${index}`,
-            name: file.name,
-            url: '#', // Placeholder
-            createdAt: new Date().toISOString(),
-        }));
-        handleUpdate('attachments', [...editableTask.attachments, ...newAttachments]);
+        const fileArray = Array.from(files);
+        // Append to pending queue (do not upload yet)
+        setPendingFiles(prev => [...prev, ...fileArray]);
+        setHasUnsavedChanges(true);
     };
 
-    const handleRemoveAttachment = (attachmentId: string) => {
-        const updatedAttachments = editableTask.attachments.filter(att => att.id !== attachmentId);
-        handleUpdate('attachments', updatedAttachments);
+    const handleRemovePendingFile = (index: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== index));
+        setHasUnsavedChanges(true);
+    };
+
+    const handleRemoveAttachment = async (attachmentId: string) => {
+        try {
+            await deleteAttachment(attachmentId);
+            const updatedAttachments = editableTask.attachments.filter(att => att.id !== attachmentId);
+            const updatedTask = { ...editableTask, attachments: updatedAttachments };
+            setEditableTask(updatedTask);
+            onUpdateTask(updatedTask);
+        } catch (err) {
+            console.error('Failed to delete attachment', err);
+        }
     };
     
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDraggingOver(true); };
@@ -216,11 +257,20 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                         
                         <div>
                             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center"><Paperclip size={14} className="mr-2"/> Attachments</h3>
-                             <div className="space-y-2 mt-1">
+                            <div className="space-y-2 mt-1">
                                 {editableTask.attachments.map((att) => (
                                     <div key={att.id} className="flex items-center justify-between p-2 text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                         <a href={att.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{att.name}</a>
                                         <button type="button" onClick={() => handleRemoveAttachment(att.id)} className="text-red-500 hover:text-red-700 ml-2">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                                {/* Pending (not yet uploaded) files */}
+                                {pendingFiles.map((file, idx) => (
+                                    <div key={`${file.name}-${file.lastModified}`} className="flex items-center justify-between p-2 text-sm rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-gray-800 dark:text-gray-200">
+                                        <span className="truncate">{file.name}</span>
+                                        <button type="button" onClick={() => handleRemovePendingFile(idx)} className="text-red-500 hover:text-red-700 ml-2">
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
@@ -422,13 +472,18 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                     >
                         Cancel
                     </button>
-                    {hasUnsavedChanges && (
+                    {(hasUnsavedChanges || isSaving) && (
                         <button 
                             onClick={handleSaveChanges}
-                            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 shadow-sm animate-in fade-in duration-200"
+                            disabled={isSaving}
+                            className={`flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-600 rounded-md hover:bg-brand-700 shadow-sm animate-in fade-in duration-200 ${isSaving ? 'opacity-80 cursor-wait' : ''}`}
                         >
-                            <Save size={16} className="mr-2" />
-                            Save Changes
+                            {isSaving ? (
+                                <span className="inline-block mr-2 h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                            ) : (
+                                <Save size={16} className="mr-2" />
+                            )}
+                            {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                     )}
                 </footer>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Briefcase, Users, CheckSquare, Search as SearchIcon, MessageSquare } from 'lucide-react';
 import type { Project, Team, Task, User } from '../types';
 import Avatar from '../components/Avatar';
+import { on } from 'events';
 
 interface SearchPageProps {
     query: string;
@@ -9,6 +10,7 @@ interface SearchPageProps {
     allTeams: Team[];
     allUsers: User[];
     onSelectProject: (projectId: string) => void;
+    onSelectTask: (projectId: string, taskId: string) => void;
     onNavigateToTeam: (teamId: string) => void;
     onStartConversation: (partnerId: string) => void;
     onViewUser: (user: User) => void;
@@ -20,6 +22,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
     allTeams,
     allUsers,
     onSelectProject,
+    onSelectTask,
     onNavigateToTeam,
     onStartConversation,
     onViewUser
@@ -130,7 +133,7 @@ const SearchPage: React.FC<SearchPageProps> = ({
                             <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Tasks ({results.tasks.length})</h2>
                             <div className="space-y-2">
                                 {results.tasks.map(({ task, project }) => (
-                                    <div key={task.id} onClick={() => onSelectProject(project.id)} className="bg-white dark:bg-gray-800/50 rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <div key={task.id} onClick={() => onSelectTask(project.id, task.id)} className="bg-white dark:bg-gray-800/50 rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <div>
                                             <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{task.title}</p>
                                             <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">

@@ -6,13 +6,17 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view
 from django.db.models import Max
+from django.core.files.storage import default_storage
+from django.conf import settings
+import os
+import uuid
 
 
 from .models import (
     Team, TeamMember, Project, Column, Task, Attachment, Comment, ChatMessage, DirectMessage
 )
 from .serializers import (
-    UserSerializer, RegisterSerializer, TeamSerializer, TeamMemberSerializer, ProjectSerializer,
+    UserSerializer, RegisterSerializer, TeamSerializer, NestedUserSerializer, ProjectSerializer,
     ColumnSerializer, TaskSerializer, AttachmentSerializer,
     CommentSerializer, ChatMessageSerializer, DirectMessageSerializer
 )
@@ -21,6 +25,53 @@ from rest_framework.permissions import IsAuthenticated
 
 User = get_user_model()
 
+
+def _delete_storage_file_by_url(url):
+    """Delete a stored file referenced by a full/absolute URL.
+
+    Tries to convert the public URL into a storage-relative path and delete it
+    via Django's `default_storage`. This is best-effort and will swallow
+    exceptions so DB cleanup can continue even if file removal fails.
+    """
+    try:
+        if not url:
+            return
+        media_url = settings.MEDIA_URL or ""
+        path = None
+        # If MEDIA_URL is contained in the url, strip everything up to and including MEDIA_URL
+        if media_url and media_url in url:
+            idx = url.find(media_url) + len(media_url)
+            path = url[idx:]
+        else:
+            # Fallback: try to parse the path component and strip a leading slash
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(url)
+                path = parsed.path or ""
+                if media_url and media_url in path:
+                    idx = path.find(media_url) + len(media_url)
+                    path = path[idx:]
+            except Exception:
+                path = url
+        if not path:
+            return
+        # normalize: remove leading slash and URL-decode to handle %20 / encoded chars
+        try:
+            from urllib.parse import unquote
+            path = unquote(path.lstrip('/'))
+        except Exception:
+            path = path.lstrip('/')
+
+        # delete if exists
+        try:
+            if default_storage.exists(path):
+                default_storage.delete(path)
+        except Exception:
+            # swallow storage/backend-specific errors
+            pass
+    except Exception:
+        # ensure this helper never raises
+        return
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -154,7 +205,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return Response({
             "id": str(message.id),
             "projectId": str(project.id),
-            "author": {"id": message.author.id, "name": message.author.name, "avatarUrl": message.author.avatar_url},
+            "author": {"id": message.author.id, "name": message.author.name, "avatarUrl": str(message.author.avatar)},
             "content": message.content,
             "timestamp": message.timestamp
         }, status=status.HTTP_201_CREATED)
@@ -357,6 +408,65 @@ class TaskViewSet(viewsets.ModelViewSet):
 
             return Response({"columns": columns_object}, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"], url_path="comments")
+    def comments(self, request, pk=None):
+        """POST /tasks/{id}/comments/ - add a comment to a task (author = request.user)
+        Body: { "content": "..." }
+        """
+        task = self.get_object()
+        content = request.data.get("content")
+        if not content:
+            return Response({"error": "content required"}, status=400)
+
+        comment = Comment.objects.create(author=request.user, content=content)
+        task.comments.add(comment)
+
+        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="attachments")
+    def attachments(self, request, pk=None):
+        """POST /tasks/{id}/attachments/ - upload one or more files and attach to task
+        Expects multipart/form-data with `files` (one or many).
+        Returns created Attachment objects.
+        """
+        task = self.get_object()
+
+        # Accept multiple files under 'files' or single 'file'
+        files = []
+        try:
+            files = request.FILES.getlist('files')
+        except Exception:
+            files = []
+        if not files:
+            # try single file key
+            single = request.FILES.get('file')
+            if single:
+                files = [single]
+
+        if not files:
+            return Response({"error": "no files provided"}, status=400)
+
+        created = []
+        for f in files:
+            # save to default storage under attachments/
+            unique_name = f"{uuid.uuid4().hex}_{f.name}"
+            rel_path = os.path.join('attachments', unique_name)
+            saved_path = default_storage.save(rel_path, f)
+
+            # build an absolute URL to the saved file
+            try:
+                file_url = default_storage.url(saved_path)
+                if not file_url.startswith('http'):
+                    file_url = request.build_absolute_uri(file_url)
+            except Exception:
+                file_url = request.build_absolute_uri(settings.MEDIA_URL + saved_path)
+
+            att = Attachment.objects.create(name=f.name, url=file_url)
+            task.attachments.add(att)
+            created.append(att)
+
+        return Response(AttachmentSerializer(created, many=True).data, status=status.HTTP_201_CREATED)
+
     # override destroy to remove references in columns and delete task safely
     def destroy(self, request, *args, **kwargs):
         task = self.get_object()
@@ -368,7 +478,35 @@ class TaskViewSet(viewsets.ModelViewSet):
                 if str(task.id) in c.task_ids:
                     c.task_ids = [tid for tid in c.task_ids if tid != str(task.id)]
                     c.save()
-            # remove M2M relations (attachments/comments) optionally delete attachments entities? Here we keep attachments.
+
+            # Delete attachments' stored files and attachment objects attached to this task
+            try:
+                attachments = list(task.attachments.all())
+                for att in attachments:
+                    try:
+                        _delete_storage_file_by_url(att.url)
+                    except Exception:
+                        pass
+                    try:
+                        att.delete()
+                    except Exception:
+                        pass
+            except Exception:
+                # ensure we do not abort deletion if something goes wrong
+                pass
+
+            # Delete comment objects attached to this task
+            try:
+                comments = list(task.comments.all())
+                for cm in comments:
+                    try:
+                        cm.delete()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+            # finally delete the task itself
             task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -377,6 +515,16 @@ class AttachmentViewSet(viewsets.ModelViewSet):
     queryset = Attachment.objects.all()
     serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        att = self.get_object()
+        # attempt to remove stored file before deleting the DB record
+        try:
+            _delete_storage_file_by_url(att.url)
+        except Exception:
+            pass
+        att.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CommentViewSet(viewsets.ModelViewSet):

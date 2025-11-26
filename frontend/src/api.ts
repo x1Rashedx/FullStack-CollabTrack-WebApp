@@ -251,6 +251,45 @@ export const deleteTask = async (taskId: string) => {
     });
 };
 
+// Create a comment for a task
+export const createTaskComment = async (taskId: string, content: string) => {
+    return apiRequest< { id: string, author: any, content: string, timestamp: string }>(`/tasks/${taskId}/comments/`, {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+    });
+};
+
+// Upload an attachment for a task (multipart/form-data). Accepts a single File.
+export const uploadTaskAttachment = async (taskId: string, file: File) => {
+    const formData = new FormData();
+    // backend accepts `files` (array) or single `file`
+    formData.append('files', file);
+
+    const token = getAuthToken();
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/tasks/${taskId}/attachments/`, {
+        method: 'POST',
+        headers,
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        throw new Error(errorData.detail || errorData.message || 'Attachment upload failed');
+    }
+
+    return response.json();
+};
+
+// Delete an attachment
+export const deleteAttachment = async (attachmentId: string) => {
+    return apiRequest<void>(`/attachments/${attachmentId}/`, {
+        method: 'DELETE',
+    });
+};
+
 
 
 export const createTeam = (name: string, description: string, icon: string) => {

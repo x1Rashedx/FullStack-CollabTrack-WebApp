@@ -4,16 +4,18 @@ import { X, Trash2, UploadCloud, BarChart2 } from 'lucide-react';
 import type { User, Task, Attachment } from '../types';
 import CustomDatePicker from './CustomDatePicker';
 import Avatar from './Avatar';
+import { uploadTaskAttachment } from '../api';
 
 interface CreateTaskModalProps {
     onClose: () => void;
-    onCreateTask: (newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => void;
+    onCreateTask: (newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => Promise<Task>;
+    onUpdateTask?: (updatedTask: Task) => void;
     columnId: string;
     projectMembers: User[];
     allTags: string[];
 }
 
-const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreateTask, columnId, projectMembers, allTags }) => {
+const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreateTask, onUpdateTask, columnId, projectMembers, allTags }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
@@ -22,7 +24,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreateTask
     const [weight, setWeight] = useState<number>(1);
     const [tags, setTags] = useState<string[]>([]);
     const [currentTag, setCurrentTag] = useState('');
-    const [attachments, setAttachments] = useState<Omit<Attachment, 'id' | 'createdAt' | 'url'>[]>([]);
+    const [attachments, setAttachments] = useState<File[]>([]);
     
     const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -57,8 +59,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreateTask
     };
 
     const handleAddAttachments = (files: FileList) => {
-        const newAttachments = Array.from(files).map(file => ({ name: file.name }));
-        setAttachments(prev => [...prev, ...newAttachments]);
+        const fileList = Array.from(files);
+        setAttachments(prev => [...prev, ...fileList]);
     };
 
     const removeAttachment = (index: number) => {
@@ -83,29 +85,48 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreateTask
     };
 
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!title.trim()) return;
 
-        const finalAttachments: Attachment[] = attachments.map((att, index) => ({
-            id: `att-${Date.now()}-${index}`,
-            name: att.name,
-            url: '#', // Placeholder URL
-            createdAt: new Date().toISOString(),
-        }));
+        try {
+            // Create task without attachments first
+            const createdTask = await onCreateTask({
+                title: title.trim(),
+                description: description.trim(),
+                assignees: projectMembers.filter(m => assigneeIds.includes(m.id)),
+                priority,
+                dueDate,
+                tags,
+                attachments: [],
+                comments: [],
+                weight: weight,
+                completed: false
+            }, columnId);
 
-        onCreateTask({
-            title: title.trim(),
-            description: description.trim(),
-            assignees: projectMembers.filter(m => assigneeIds.includes(m.id)),
-            priority,
-            dueDate,
-            tags,
-            attachments: finalAttachments,
-            comments: [],
-            weight: weight,
-            completed: false
-        }, columnId);
+            // Upload attachments (if any) and link to task
+            if (attachments.length > 0 && createdTask && createdTask.id) {
+                const uploaded: any[] = [];
+                for (const f of attachments) {
+                    try {
+                        const res = await uploadTaskAttachment(createdTask.id, f);
+                        if (Array.isArray(res)) uploaded.push(...res);
+                        else uploaded.push(res);
+                    } catch (err) {
+                        console.error('Attachment upload failed', err);
+                    }
+                }
+
+                if (uploaded.length > 0) {
+                    onUpdateTask({ ...createdTask, attachments: uploaded });
+                }
+            }
+
+            // close modal
+            onClose();
+        } catch (err) {
+            console.error('Failed to create task', err);
+        }
     };
 
     return (
@@ -234,7 +255,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ onClose, onCreateTask
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Attachments</label>
                             <div className="space-y-2 mt-1">
                                 {attachments.map((att, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-gray-100 dark:bg-gray-700">
+                                    <div key={index} className="flex items-center justify-between p-2 text-sm rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                                         <span className="truncate">{att.name}</span>
                                         <button type="button" onClick={() => removeAttachment(index)} className="text-red-500 hover:text-red-700">
                                             <Trash2 size={14} />

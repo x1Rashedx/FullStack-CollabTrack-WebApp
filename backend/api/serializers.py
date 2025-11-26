@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
 from .models import (
     Attachment, Comment, Task, Column, ChatMessage,
     TeamMember, Team, Project, DirectMessage
@@ -30,7 +31,22 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Handle avatar updates
         avatar = validated_data.get("avatar")
-        
+
+        # If an avatar is being provided (or explicitly set to null/None),
+        # remove any existing avatar file from storage to avoid orphaned files.
+        if "avatar" in validated_data:
+            try:
+                if instance.avatar and getattr(instance.avatar, 'name', None):
+                    old_name = instance.avatar.name
+                    if old_name:
+                        try:
+                            if default_storage.exists(old_name):
+                                default_storage.delete(old_name)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
         if avatar:
             # If it's a string (legacy base64), convert it
             if isinstance(avatar, str) and avatar.startswith("data:image"):
@@ -65,7 +81,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     author = NestedUserSerializer(read_only=True)
-    timestamp = serializers.DateTimeField(source="timestamp", read_only=True)
+    timestamp = serializers.DateTimeField(read_only=True)
     author_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, source="author", required=False)
 
     class Meta:
@@ -80,7 +96,7 @@ class TaskSerializer(serializers.ModelSerializer):
     attachments = AttachmentSerializer(many=True, read_only=True)
     attachmentIds = serializers.PrimaryKeyRelatedField(queryset=Attachment.objects.all(), many=True, write_only=True, source="attachments", required=False)
 
-    comments = CommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     commentIds = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), many=True, write_only=True, source="comments", required=False)
 
     dueDate = serializers.DateTimeField(source="due_date", allow_null=True, required=False)
@@ -127,6 +143,9 @@ class TaskSerializer(serializers.ModelSerializer):
         if comments is not None:
             instance.comments.set(comments)
         return instance
+    
+    def get_comments(self, obj):
+        return [CommentSerializer(c).data for c in obj.comments.all().order_by('timestamp')]
 
 
 class ColumnSerializer(serializers.ModelSerializer):

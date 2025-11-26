@@ -18,29 +18,28 @@ import CreateTaskModal from '../components/CreateTaskModal';
 import type { Project, User, Task, Team, Column } from '../types';
 import KanbanTask from '../components/KanbanTask';
 import KanbanColumn from '../components/KanbanColumn';
-import { Columns, Calendar as CalendarIcon, PieChart, List, Info } from 'lucide-react';
+import { Columns, Calendar as CalendarIcon, PieChart, List, Info, Filter, ChevronDown } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 import ConfirmationModal from '../components/ConfirmationModal';
 import ProjectStats from '../components/ProjectStats';
 import ProjectInfo from '../components/ProjectInfo';
 import ProjectFilters from '../components/ProjectFilters';
 import TasksListView, { TaskWithStatus } from '../components/TasksListView';
-import { sendChatMessage } from '../api';
 
 
 interface ProjectPageProps {
     project: Project;
     team: Team;
     currentUser: User;
-    onUpdateProject: (updatedProject: Project) => void;
     taskToOpen: string | null;
+    onUpdateProject: (updatedProject: Project) => void;
     onClearTaskToOpen: () => void;
     onCreateColumn: (projectId: string, title: string) => void;
     onUpdateColumn: (projectId: string, columnId: string, newTitle: string) => void;
     onMoveColumn: (projectId: string, newOrder: string[]) => void;
     onDeleteColumn: (columnId: string) => void;
     onSendMessage: (projectId: string, content: string) => void;
-    onCreateTask: (projectId: string, newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => void;
+    onCreateTask: (projectId: string, newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => Promise<Task>;
     onUpdateTask: (projectId: string, taskId: string, updatedTask: Task) => void;
     onDeleteTask: (taskId: string) => void;
     onMoveTask: (projectId: string, taskId: string, toColumnId: string, position?: number) => void;
@@ -54,6 +53,10 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     const [columnOrder, setColumnOrder] = useState(project.columnOrder);
     const [view, setView] = useState<'board' | 'stats' | 'list' | 'calendar' | 'info'>('board');
     const [isChatCollapsed, setChatCollapsed] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [isCreateTaskModalOpen, setCreateTaskModalOpen] = useState(false);
+    const [columnForNewTask, setColumnForNewTask] = useState<string | null>(null);
 
     const [chatWidth, setChatWidth] = useState(() => {
         const saved = localStorage.getItem("chatSidebarWidth");
@@ -86,11 +89,16 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
             setSelectedTask(tasks[taskToOpen]);
             onClearTaskToOpen();
         }
-    }, [taskToOpen, tasks, onClearTaskToOpen]);
+    }, [taskToOpen, onClearTaskToOpen]);
 
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [isCreateTaskModalOpen, setCreateTaskModalOpen] = useState(false);
-    const [columnForNewTask, setColumnForNewTask] = useState<string | null>(null);
+    useEffect(() => {
+        if (selectedTask && !tasks[selectedTask.id]) {
+            setSelectedTask(null);
+        }
+        if (selectedTask && tasks[selectedTask.id]) {
+            setSelectedTask(tasks[selectedTask.id]);
+        }
+    }, [tasks]);
 
     const [activeDragItem, setActiveDragItem] = useState<{ type: 'task' | 'column', id: string } | null>(null);
     const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null);
@@ -196,6 +204,8 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         setFilters({ assignee: 'all', priority: 'all', search: '', showCompleted: true });
         setSortBy('manual');
     };
+
+    const hasActiveFilters = filters.assignee !== 'all' || filters.priority !== 'all' || filters.search !== '' || !filters.showCompleted || sortBy !== 'manual';
 
     const handleDragStart = (event: DragStartEvent) => {
         const id = event.active.id as string;
@@ -344,8 +354,9 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     };
 
     const handleCreateTask = (newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => {
-        onCreateTask(project.id, newTaskData, columnId)
+        const p = onCreateTask(project.id, newTaskData, columnId);
         setCreateTaskModalOpen(false)
+        return p;
     };
     
     const handleSendMessage = (content: string) => {
@@ -393,60 +404,89 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     const projectMembers = team.members.map(m => m.user);
     const isTeamAdmin = team.members.find(m => m.user.id === currentUser.id)?.role === 'admin';
 
+    const showFilterBar = showFilters && (view === 'board' || view === 'calendar' || view === 'list');
+
     return (
         <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-shrink-0 px-6 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between">
-                <div className="inline-flex rounded-md shadow-sm" role="group">
-                    <button
-                        onClick={() => setView('board')}
-                        className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-lg border ${view === 'board' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                    >
-                        <Columns size={16} className="mr-2" />
-                        Board
-                    </button>
-                    <button
-                        onClick={() => setView('list')}
-                        className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'list' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                    >
-                        <List size={16} className="mr-2" />
-                        Tasks
-                    </button>
-                    <button
-                        onClick={() => setView('calendar')}
-                        className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'calendar' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                    >
-                        <CalendarIcon size={16} className="mr-2" />
-                        Calendar
-                    </button>
-                    <button
-                        onClick={() => setView('stats')}
-                        className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'stats' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                    >
-                        <PieChart size={16} className="mr-2" />
-                        Stats
-                    </button>
-                    <button
-                        onClick={() => setView('info')}
-                        className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border ${view === 'info' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                    >
-                        <Info size={16} className="mr-2" />
-                        Info
-                    </button>
+                <div className="flex items-center gap-4">
+                    <div className="inline-flex rounded-md shadow-sm" role="group">
+                        <button
+                            onClick={() => setView('board')}
+                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-lg border ${view === 'board' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
+                        >
+                            <Columns size={16} className="mr-2" />
+                            Board
+                        </button>
+                        <button
+                            onClick={() => setView('list')}
+                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'list' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
+                        >
+                            <List size={16} className="mr-2" />
+                            Tasks
+                        </button>
+                        <button
+                            onClick={() => setView('calendar')}
+                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'calendar' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
+                        >
+                            <CalendarIcon size={16} className="mr-2" />
+                            Calendar
+                        </button>
+                        <button
+                            onClick={() => setView('stats')}
+                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'stats' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
+                        >
+                            <PieChart size={16} className="mr-2" />
+                            Stats
+                        </button>
+                        <button
+                            onClick={() => setView('info')}
+                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border ${view === 'info' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
+                        >
+                            <Info size={16} className="mr-2" />
+                            Info
+                        </button>
+                    </div>
+            
+                    {(view === 'board' || view === 'calendar' || view === 'list') && (
+                        <button 
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${
+                                showFilters 
+                                    ? 'bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-200' 
+                                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                        >
+                            <div className="relative">
+                                <Filter size={16} />
+                                {hasActiveFilters && !showFilters && (
+                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-brand-500 rounded-full ring-2 ring-white dark:ring-gray-800"></span>
+                                )}
+                            </div>
+                            <span>Filter & Sort</span>
+                            <ChevronDown size={14} className={`transform transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
+                        </button>
+                    )}
                 </div>
             </div>
-            
-            {/* Filter Toolbar - Show for Board, Calendar, and List views */}
-            {(view === 'board' || view === 'calendar' || view === 'list') && (
-                <ProjectFilters 
-                    members={projectMembers}
-                    filters={filters}
-                    sortBy={sortBy}
-                    onFilterChange={handleFilterChange}
-                    onSortChange={setSortBy}
-                    onClearFilters={handleClearFilters}
-                    hideSort={view === 'list'}
-                />
-            )}
+
+            <div 
+                className={`grid transition-[grid-template-rows] duration-150 ease-in-out ${
+                    showFilterBar ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                }`}
+            >
+                <div className="overflow-hidden">
+                    <ProjectFilters 
+                        members={projectMembers}
+                        filters={filters}
+                        sortBy={sortBy}
+                        onFilterChange={handleFilterChange}
+                        onSortChange={setSortBy}
+                        onClearFilters={handleClearFilters}
+                        hideSort={view === 'list'}
+                    />
+                </div>
+            </div>
 
             <div className="flex-1 flex min-h-0">
                 {view === 'board' ? (
@@ -554,6 +594,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                 <CreateTaskModal
                     onClose={() => setCreateTaskModalOpen(false)}
                     onCreateTask={handleCreateTask}
+                    onUpdateTask={handleUpdateTask}
                     columnId={columnForNewTask}
                     projectMembers={projectMembers}
                     allTags={Array.from(new Set(Object.values(tasks).flatMap(task => task.tags)))}

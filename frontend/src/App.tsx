@@ -7,6 +7,7 @@ import ProjectPage from './pages/ProjectPage';
 import TeamsPage from './pages/TeamsPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
+import LandingPage from './pages/LandingPage';
 import OnboardingModal from './components/OnboardingModal';
 import MessagesPage from './pages/MessagesPage';
 import SearchPage from './pages/SearchPage';
@@ -21,6 +22,14 @@ import strict from 'assert/strict';
 function App() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // Auth Navigation State
+    const [authView, setAuthView] = useState<'landing' | 'signin' | 'signup'>('landing');
+    
+    // Demo Mode State
+    const [isDemoMode, setIsDemoMode] = useState(() => {
+        return localStorage.getItem('isDemoMode') === 'true';
+    });
     
     const [projects, setProjects] = useState<{ [key: string]: Project }>({});
     const [teams, setTeams] = useState<{ [key: string]: Team }>({});
@@ -62,25 +71,25 @@ function App() {
     };
 
 
-    useEffect(() => {
-        console.log("Current user:", currentUser);
-    }, [currentUser]);
+    // useEffect(() => {
+    //     console.log("Current user:", currentUser);
+    // }, [currentUser]);
 
-    useEffect(() => {
-        console.log("Projects updated:", projects);
-    }, [projects]);
+    // useEffect(() => {
+    //     console.log("Projects updated:", projects);
+    // }, [projects]);
 
-    useEffect(() => {
-        console.log("Teams updated:", teams);
-    }, [teams]);
+    // useEffect(() => {
+    //     console.log("Teams updated:", teams);
+    // }, [teams]);
 
-    useEffect(() => {
-        console.log("Direct messages updated:", directMessages);
-    }, [directMessages]);
+    // useEffect(() => {
+    //     console.log("Direct messages updated:", directMessages);
+    // }, [directMessages]);
 
-    useEffect(() => {
-        console.log("users updated:", users);
-    }, [users]);
+    // useEffect(() => {
+    //     console.log("users updated:", users);
+    // }, [users]);
 
 
     useEffect(() => {
@@ -333,7 +342,7 @@ function App() {
     }
 
     const handleCreateTask = async (projectId: string, newTaskData: Task, columnId: string) => {
-        api.createTask(projectId, columnId, newTaskData)
+        return api.createTask(projectId, columnId, newTaskData)
             .then(newTask => {
                 setProjects(prev => ({
                     ...prev,
@@ -353,8 +362,9 @@ function App() {
                     }
                 }))
                 addToast('task created successfully!', 'success');
+                return newTask;
             })
-            .catch(() => addToast('Failed to create task.', 'error'));
+            .catch((err) => { addToast('Failed to create task.', 'error'); throw err; });
     };
 
     const handleUpdateTask = async (projectId: string, taskId: string, updatedTask: Task) => {
@@ -426,6 +436,7 @@ function App() {
         setCurrentProjectId(projectId);
         setCurrentPage('project');
         setTaskToOpen(taskId);
+        console.log("Selecting task from search:", taskId);
     };
     
     const clearTaskToOpen = () => setTaskToOpen(null);
@@ -581,8 +592,27 @@ function App() {
     }
     
     if (!currentUser) {
-        navigateURL("/login");
-        return <LoginPage onLogin={handleLogin} onRegister={handleRegister} onNavigateURL={navigateURL} />;
+        if (authView === 'landing') {
+            return (
+                <LandingPage 
+                    onNavigate={(mode) => setAuthView(mode)} 
+                    isDarkMode={isDarkMode}
+                    onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+                    onDemoLogin={() => {}}
+                />
+            );
+        }
+        return (
+             <LoginPage 
+                onLogin={handleLogin} 
+                onRegister={handleRegister} 
+                isDarkMode={isDarkMode} 
+                onBack={() => setAuthView('landing')} 
+                initialMode={authView === 'signup' ? 'signup' : 'signin'} 
+                onToggleTheme={() => setIsDarkMode(!isDarkMode)} 
+                onNavigateURL={navigateURL} 
+             />
+        );
     }
     
     if (error) {
@@ -654,7 +684,7 @@ function App() {
                     {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
                     {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} />}
-                    {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
+                    {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onSelectTask={handleSelectTaskFromSearch} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
                 </main>
             </div>
         </div>
