@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 .env
 db.sqlite3
-media/*
+backend/media/*
