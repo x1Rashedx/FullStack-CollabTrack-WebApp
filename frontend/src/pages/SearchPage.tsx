@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Briefcase, Users, CheckSquare, Search as SearchIcon, MessageSquare } from 'lucide-react';
-import type { Project, Team, Task, User } from '../types';
-import Avatar from '../components/Avatar';
-import { on } from 'events';
+import type { Project, Team, Task, User } from '@/types';
+import Avatar from '@/components/common/Avatar';
 
 interface SearchPageProps {
     query: string;

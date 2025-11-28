@@ -72,6 +72,8 @@ def _delete_storage_file_by_url(url):
     except Exception:
         # ensure this helper never raises
         return
+    
+    
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

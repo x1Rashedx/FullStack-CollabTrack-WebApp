@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Search, MessageSquare, PanelLeft, ChevronsRight, ChevronsLeft } from 'lucide-react';
-import type { User, DirectMessage } from '../types';
-import Avatar from '../components/Avatar';
+import type { User, DirectMessage } from '@/types';
+import Avatar from '@components/common/Avatar';
 
 interface MessagesPageProps {
     currentUser: User;

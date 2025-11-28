@@ -5,7 +5,7 @@ from .models import (
     Attachment, Comment, Task, Column, ChatMessage,
     TeamMember, Team, Project, DirectMessage
 )
-from .utils import compress_base64_image
+from .utils import compress_base64_image, rename_file
 
 User = get_user_model()
 
@@ -52,6 +52,9 @@ class UserSerializer(serializers.ModelSerializer):
             if isinstance(avatar, str) and avatar.startswith("data:image"):
                 compressed = compress_base64_image(avatar)
                 validated_data["avatar"] = compressed
+            else:
+                # Uploaded File → rename before saving
+                validated_data["avatar"] = rename_file(avatar)
             # Otherwise it's already a File object from form upload
 
         return super().update(instance, validated_data)

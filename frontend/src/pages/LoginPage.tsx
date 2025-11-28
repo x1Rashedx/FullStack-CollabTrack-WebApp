@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Shield, ArrowLeft, Layout, Mail, Lock, User, Sun, Moon } from 'lucide-react';
-import Spinner from '../components/Spinner';
+import Spinner from '@components/common/Spinner';
 
 interface LoginPageProps {
     onLogin: (email: string, password: string) => Promise<void>;

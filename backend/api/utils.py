@@ -1,4 +1,6 @@
 import base64
+import os
+import uuid
 from PIL import Image
 from io import BytesIO
 
@@ -31,3 +33,16 @@ def compress_base64_image(base64_str, max_width=300, quality=70):
         compressed_base64 = f"{prefix},{compressed_base64}"
 
     return compressed_base64
+
+def rename_file(file):
+    # Get base name and extension
+    name, ext = os.path.splitext(file.name)
+
+    # Create random suffix
+    random_suffix = uuid.uuid4().hex[:8]  # 8 chars
+
+    # Build new filename
+    new_name = f"{name}_{random_suffix}{ext}"
+
+    file.name = new_name
+    return file

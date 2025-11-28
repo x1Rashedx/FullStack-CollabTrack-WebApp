@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import type { Project, Team, User } from '../types';
-import CreateProjectModal from '../components/CreateProjectModal';
-import CreateTeamModal from '../components/CreateTeamModal';
+import type { Project, Team, User } from '@/types';
+import CreateProjectModal from '@components/modals/CreateProjectModal';
+import CreateTeamModal from '@components/modals/CreateTeamModal';
 import { Plus, Users, CheckSquare, Briefcase } from 'lucide-react';
-import Avatar from '../components/Avatar';
+import Avatar from '@components/common/Avatar';
 
 interface DashboardPageProps {
     projects: Project[];

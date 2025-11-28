@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { User, Project } from '../types';
+import type { User, Project } from '@/types';
 import { Mail, Briefcase, Calendar, Sun, Moon, Phone, User as UserIcon, Camera } from 'lucide-react';
-import Avatar from '../components/Avatar';
-import ImageCropperModal from '../components/ImageCropperModal';
+import Avatar from '@components/common/Avatar';
+import ImageCropperModal from '@components/modals/ImageCropperModal';
 import imageCompression from 'browser-image-compression';
 
 interface ProfilePageProps {
@@ -32,7 +32,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, projects, isDark
     };
 
     const handleSave = () => {
-        console.log("Saving user profile", formState, avatarFile);
         onUpdateUser(formState, avatarFile || undefined);
         setIsDirty(false);
         setAvatarFile(null);

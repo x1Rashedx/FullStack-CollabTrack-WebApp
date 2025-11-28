@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { User, Team, Project, TeamMember } from '../types';
-import CreateTeamModal from '../components/CreateTeamModal';
-import CreateProjectModal from '../components/CreateProjectModal';
-import MemberProfileModal from '../components/MemberProfileModal';
-import InviteMemberModal from '../components/InviteMemberModal';
+import { InviteMemberModal, MemberProfileModal, CreateProjectModal, CreateTeamModal } from '@/components/modals';
 import { Plus, MoreVertical, Users, Briefcase, Trash2, MessageSquare, UserCheck, UserX, Check, X as XIcon, Edit2, Image as ImageIcon, PanelLeft, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import Avatar from '../components/Avatar';
-import { TEAM_ICONS } from '../constants'
+import { TEAM_ICONS } from '@/utils/constants';
+import Avatar from '@/components/common/Avatar';
 
 interface TeamsPageProps {
     currentUser: User;

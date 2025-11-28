@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import DashboardPage from './pages/DashboardPage';
-import ProjectPage from './pages/ProjectPage';
-import TeamsPage from './pages/TeamsPage';
-import LoginPage from './pages/LoginPage';
-import ProfilePage from './pages/ProfilePage';
-import LandingPage from './pages/LandingPage';
-import OnboardingModal from './components/OnboardingModal';
-import MessagesPage from './pages/MessagesPage';
-import SearchPage from './pages/SearchPage';
-import Toast from './components/Toast';
-import UserProfileModal from './components/UserProfileModal';
-import Spinner from './components/Spinner';
-import * as api from './api';
-import type { Project, Task, User, Team, DirectMessage, Folder } from './types';
-import strict from 'assert/strict';
+// Layout & Components
+import { Sidebar, Header } from '@components/layout';
+import { OnboardingModal, UserProfileModal } from '@components/modals';
+import { Toast, Spinner } from '@components/common';
+
+// Pages
+import DashboardPage from '@pages/DashboardPage';
+import ProjectPage from '@pages/ProjectPage';
+import TeamsPage from '@pages/TeamsPage';
+import LoginPage from '@pages/LoginPage';
+import ProfilePage from '@pages/ProfilePage';
+import LandingPage from '@pages/LandingPage';
+import MessagesPage from '@pages/MessagesPage';
+import SearchPage from '@pages/SearchPage';
+
+// Services & Types
+import { authService, projectService, taskService, columnService, teamService, messageService, userService, fetchVersion } from '@services/index';
+import type { Project, Task, User, Team, DirectMessage, Folder } from '@/types';
 
 
 function App() {
@@ -55,10 +56,6 @@ function App() {
         return saved ? parseInt(saved, 10) : 256;
     });
 
-    useEffect(() => {
-        localStorage.setItem("sidebarWidth", sidebarWidth.toString());
-    }, [sidebarWidth]);
-    
     const [toasts, setToasts] = useState<{id: number, message: string, type: 'success' | 'error' | 'info'}[]>([]);
     
     const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -69,6 +66,10 @@ function App() {
     const navigateURL = (url: string) => {
         window.history.pushState({}, "", url);
     };
+
+    useEffect(() => {
+        localStorage.setItem("sidebarWidth", sidebarWidth.toString());
+    }, [sidebarWidth]);
 
 
     // useEffect(() => {
@@ -96,13 +97,14 @@ function App() {
         if (!currentUser) return; // Only fetch if user is logged in
         const fetchData = async () => {
             try {
-                const v = api.fetchVersion;
-                const data = await api.fetchAllData();
-                if (v !== api.fetchVersion - 1) {console.log("abort"); return;};
+                const v = fetchVersion;
+                const data = await userService.fetchAllUserData();
+                if (v !== fetchVersion - 1) {throw new Error("Fetch version mismatch");};
                 setProjects(data.projects);
                 setTeams(data.teams);
                 setDirectMessages(data.directMessages);
                 setUsers(data.users);
+                console.log("Periodic data fetch complete.");
             } catch (err) {
                 console.error("Failed to fetch data:", err);
             }
@@ -123,19 +125,19 @@ function App() {
     // Auth check on initial load
     useEffect(() => {
         const authenticateAndLoadData = async () => {
-            const token = api.getAuthToken();
+            const token = authService.getAuthToken();
             if (token) {
                 try {
-                    const user = await api.fetchCurrentUser();
+                    const user = await authService.getCurrentUser();
                     setCurrentUser(user);
-                    const data = await api.fetchAllData();
+                    const data = await userService.fetchAllUserData();
                     setProjects(data.projects);
                     setTeams(data.teams);
                     setDirectMessages(data.directMessages);
                     setUsers(data.users);
                 } catch (err) {
                     // Token is invalid or expired
-                    api.clearAuthToken();
+                    authService.logout();
                     setCurrentUser(null);
                 }
             }
@@ -170,10 +172,10 @@ function App() {
         setIsLoading(true);
         setError(null);
         try {
-            await api.login(email, password);
-            const user = await api.fetchCurrentUser();
+            await authService.login(email, password);
+            const user = await authService.getCurrentUser();
             setCurrentUser(user);
-            const data = await api.fetchAllData();
+            const data = await userService.fetchAllUserData();
             setProjects(data.projects);
             setTeams(data.teams);
             setDirectMessages(data.directMessages);
@@ -199,17 +201,17 @@ function App() {
         setError(null);
         try {
             // Call your API to create a new user
-            await api.registerUser({ name, email, password });
+            await authService.register({ name, email, password });
 
             // Optionally, log the user in immediately
-            await api.login(email, password);
+            await authService.login(email, password);
 
             // Fetch the current user (which should now be the new user)
-            const user = await api.fetchCurrentUser();
+            const user = await authService.getCurrentUser();
             setCurrentUser(user);
 
             // Fetch all relevant data for the app
-            const data = await api.fetchAllData();
+            const data = await userService.fetchAllUserData();
             setProjects(data.projects);
             setTeams(data.teams);
             setDirectMessages(data.directMessages);
@@ -237,7 +239,7 @@ function App() {
 
     
     const handleLogout = () => {
-        api.logout();
+        authService.logout();
         setCurrentUser(null);
         setProjects({});
         setTeams({});
@@ -256,15 +258,15 @@ function App() {
         setCurrentPage('project');
         navigateURL(`/project/${projectId}`);
     };
-// -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
     const handleUpdateProject = async (updatedProject: Project) => {
-        api.updateProject(updatedProject)
+        projectService.update(updatedProject)
             .then(p => setProjects(prev => ({ ...prev, [p.id]: p })))
             .catch(() => addToast('Failed to update project.', 'error'));
     };
     
     const handleCreateProject = async (name: string, description: string, teamId: string) => {
-        api.createProject(name, description, teamId)
+        projectService.create(name, description, teamId)
             .then(({ newProject, updatedTeam }) => {
                 setProjects(prev => ({...prev, [newProject.id]: newProject }));
                 setTeams(prev => ({ ...prev, [updatedTeam.id]: updatedTeam }));
@@ -285,7 +287,7 @@ function App() {
     };
     
     const handleCreateColumn = async (projectId: string, title: string) => {
-        api.createColumn(projectId, title)
+        columnService.create(projectId, title)
             .then(({columns, columnOrder}) => {
                 setProjects(prev => ({
                 ...prev,
@@ -301,7 +303,7 @@ function App() {
     };
 
     const handleMoveColumn = async (projectId: string, newOrder: string[]) => {
-        api.moveColumn(projectId, newOrder)
+        columnService.move(projectId, newOrder)
             .then(columnOrder => {
                 setProjects(prev => ({
                 ...prev,
@@ -316,7 +318,7 @@ function App() {
     };
 
     const handleUpdateColumn = async (projectId: string, columnId: string, title: string) => {
-        api.updateColumn(columnId, title)
+        columnService.update(columnId, title)
             .then(newColumn => {
                 setProjects(prev => ({
                     ...prev,
@@ -334,7 +336,7 @@ function App() {
     };
 
     const handleDeleteColumn = async (columnId: string) => {
-        api.deleteColumn(columnId)
+        columnService.delete(columnId)
             .then(() => {
                 addToast("Column deleted.", "info");;
             })
@@ -342,7 +344,7 @@ function App() {
     }
 
     const handleCreateTask = async (projectId: string, newTaskData: Task, columnId: string) => {
-        return api.createTask(projectId, columnId, newTaskData)
+        return taskService.create(projectId, columnId, newTaskData)
             .then(newTask => {
                 setProjects(prev => ({
                     ...prev,
@@ -368,7 +370,7 @@ function App() {
     };
 
     const handleUpdateTask = async (projectId: string, taskId: string, updatedTask: Task) => {
-        api.updateTask(projectId, taskId, updatedTask)
+        taskService.update(projectId, taskId, updatedTask)
             .then(newTask => {
                 setProjects(prev => ({
                     ...prev,
@@ -387,18 +389,10 @@ function App() {
                 addToast('Failed to update task.', 'error');
             })
         
-    }
-
-    const handleDeleteTask = async (taskId: string) => {
-        api.deleteTask(taskId)
-            .then(() => {
-                addToast("Task deleted.", "info");;
-            })
-            .catch(() => addToast('Failed to delete task.', 'error'));
-    }
+    };
 
     const handleMoveTask = async (projectId: string, taskId: string, toColumnId: string, position: number) => {
-        api.moveTask(taskId, toColumnId, position)
+        taskService.move(taskId, toColumnId, position)
             .then(({columns}) => {
                 setProjects(prev => ({
                 ...prev,
@@ -406,16 +400,95 @@ function App() {
                     ...prev[projectId],     // keep existing project data
                     columns,                // update only the columns
                 }
-                }));
-                    addToast('task moved successfully!', 'success');
-                })
-                .catch(() => addToast('Failed to move task.', 'error'));
-    }
+            }));
+                addToast('task moved successfully!', 'success');
+            })
+            .catch(() => addToast('Failed to move task.', 'error'));
+    };
+
+    const handleDeleteTask = async (taskId: string) => {
+        taskService.delete(taskId)
+            .then(() => {
+                addToast("Task deleted.", "info");;
+            })
+            .catch(() => addToast('Failed to delete task.', 'error'));
+    };
+
+    const handleCreateComment = async (projectId: string, taskId: string, content: string) => {
+        taskService.addComment(taskId, content)
+        .then(newComment => {
+            setProjects(prev => ({
+                ...prev,
+                [projectId]: {
+                    ...prev[projectId],
+                    tasks: {
+                        ...prev[projectId].tasks,
+                        [taskId]: {
+                            ...prev[projectId].tasks[taskId],
+                            comments: [...prev[projectId].tasks[taskId].comments, newComment]
+                        } 
+                    }
+                }
+            }))
+            addToast('commented successfully!', 'success');
+        })
+        .catch(() => addToast('Failed to post comment.', 'error'));
+    };
+
+    const handleUploadTaskAttachment = async (projectId: string, taskId: string, file: File) => {
+        return taskService.uploadAttachment(taskId, file)
+            .then(newAttachments => {
+                setProjects(prev => ({
+                    ...prev,
+                    [projectId]: {
+                        ...prev[projectId],
+                        tasks: {
+                            ...prev[projectId].tasks,
+                            [taskId]: {
+                                ...prev[projectId].tasks[taskId],
+                                attachments: Array.isArray(newAttachments) ? 
+                                    [...prev[projectId].tasks[taskId].attachments, ...newAttachments] :
+                                    [...prev[projectId].tasks[taskId].attachments, newAttachments]
+                            } 
+                        }
+                    }
+                }))
+                addToast('Attachment uploaded successfully!', 'success');
+                return newAttachments;
+            })
+            .catch((err) => { 
+                addToast('Failed to upload attachment.', 'error'); 
+            });
+    };
+
+    const handleDeleteTaskAttachment = async (projectId: string, taskId: string, attachmentId: string) => {
+        taskService.deleteAttachment(attachmentId)
+            .then(() => {
+                setProjects(prev => ({
+                    ...prev,
+                    [projectId]: {
+                        ...prev[projectId],
+                        tasks: {
+                            ...prev[projectId].tasks,
+                            [taskId]: {
+                                ...prev[projectId].tasks[taskId],
+                                attachments: prev[projectId].tasks[taskId].attachments.filter(att => att.id !== attachmentId)
+                            } 
+                        }
+                    }
+                }))
+                addToast('Attachment deleted.', 'info');
+            })
+            .catch(() => { 
+                addToast('Failed to delete attachment.', 'error'); 
+            });
+    };
+
 
     const handleSendMessage = async (projectId: string, content: string) => {
         try {
             // Call backend API to save message
-            const savedMessage = await api.sendChatMessage(projectId, content);
+            const savedMessage = await messageService.sendChatMessage(projectId, content);
             const updatedMessages = [...projects[projectId].chatMessages, savedMessage];
 
             setProjects(prev => ({
@@ -442,7 +515,7 @@ function App() {
     const clearTaskToOpen = () => setTaskToOpen(null);
 
     const handleUpdateUser = (updateUser: User, avatarFile?: File) => {
-        api.updateUser(updateUser, avatarFile)
+        userService.updateUser(updateUser, avatarFile)
             .then((updatedUser) => {
                 setUsers(prev => ({ ...prev, [updatedUser.id]: updatedUser }));
                 if (currentUser && currentUser.id === updatedUser.id) {
@@ -454,7 +527,7 @@ function App() {
     };
     
     const handleCreateTeam = (name: string, description: string, icon: string) => {
-        api.createTeam(name, description, icon)
+        teamService.create(name, description, icon)
             .then(newTeam => {
                 setTeams(prev => ({...prev, [newTeam.id]: newTeam}));
                 addToast('Team created!', 'success');
@@ -463,7 +536,7 @@ function App() {
     };
 
     const handleUpdateTeam = (updatedTeam: Team) => {
-        api.updateTeam(updatedTeam)
+        teamService.update(updatedTeam)
             .then(team => {
                  setTeams(prev => ({ ...prev, [team.id]: team }));
             })
@@ -476,7 +549,7 @@ function App() {
     };
 
     const handleSendDirectMessage = (receiverId: string, content: string) => {
-        api.sendDirectMessage(receiverId, content)
+        messageService.sendDirectMessage(receiverId, content)
             .then(newDm => {
                  setDirectMessages(prev => ({ ...prev, [newDm.id]: newDm }));
             })
@@ -484,7 +557,7 @@ function App() {
     };
 
     const handleInviteMember = (teamId: string, email: string) => {
-        api.inviteMember(teamId, email)
+        teamService.invite(teamId, email)
             .then(updatedTeam => {
                 setTeams(prev => ({...prev, [teamId]: updatedTeam }));
                 const invitedUser = Object.values(users).find(u => u.email === email);
@@ -494,7 +567,7 @@ function App() {
     };
     
     const handleRequestToJoinTeam = (teamId: string) => {
-        api.requestToJoinTeam(teamId)
+        teamService.requestToJoin(teamId)
             .then((data) => {
                 addToast(`Your request to join ${data.name} has been sent.`, 'success');
             })
@@ -502,7 +575,7 @@ function App() {
     };
     
     const handleManageJoinRequest = (teamId: string, userId: string, action: 'approve' | 'deny') => {
-        api.manageJoinRequest(teamId, userId, action)
+        teamService.manageJoinRequest(teamId, userId, action)
             .then(({ message, team }) => {
                 console.log(team)
                  setTeams(prev => ({...prev, [teamId]: team }));
@@ -680,7 +753,7 @@ function App() {
                  />
                  <main className="flex-1 flex flex-col overflow-hidden min-h-0">
                     {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onCreateTeam={handleCreateTeam}/></div>}
-                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
+                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
                     {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
                     {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} />}

@@ -11,21 +11,16 @@ import {
   DragOverlay,
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import KanbanBoard from '../components/KanbanBoard';
-import Chat from '../components/Chat';
-import TaskModal from '../components/TaskModal';
-import CreateTaskModal from '../components/CreateTaskModal';
-import type { Project, User, Task, Team, Column } from '../types';
-import KanbanTask from '../components/KanbanTask';
-import KanbanColumn from '../components/KanbanColumn';
 import { Columns, Calendar as CalendarIcon, PieChart, List, Info, Filter, ChevronDown } from 'lucide-react';
-import CalendarView from '../components/CalendarView';
-import ConfirmationModal from '../components/ConfirmationModal';
-import ProjectStats from '../components/ProjectStats';
-import ProjectInfo from '../components/ProjectInfo';
-import ProjectFilters from '../components/ProjectFilters';
-import TasksListView, { TaskWithStatus } from '../components/TasksListView';
 
+import type { Project, User, Task, Team, Attachment, Comment } from '@/types';
+import { KanbanBoard, KanbanColumn, KanbanTask, TaskModal, TasksListView } from '@/components/features/tasks';
+import { ConfirmationModal, CreateTaskModal } from '@components/modals';
+import { ProjectStats, ProjectInfo, ProjectFilters } from '@/components/features/projects';
+import { TaskWithStatus } from '@/components/features/tasks/TasksListView';
+
+import CalendarView from '@/components/features/calendar/CalendarView';
+import Chat from '@/components/features/chat/Chat';
 
 interface ProjectPageProps {
     project: Project;
@@ -34,20 +29,26 @@ interface ProjectPageProps {
     taskToOpen: string | null;
     onUpdateProject: (updatedProject: Project) => void;
     onClearTaskToOpen: () => void;
+
     onCreateColumn: (projectId: string, title: string) => void;
     onUpdateColumn: (projectId: string, columnId: string, newTitle: string) => void;
     onMoveColumn: (projectId: string, newOrder: string[]) => void;
     onDeleteColumn: (columnId: string) => void;
+
     onSendMessage: (projectId: string, content: string) => void;
+
     onCreateTask: (projectId: string, newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => Promise<Task>;
     onUpdateTask: (projectId: string, taskId: string, updatedTask: Task) => void;
     onDeleteTask: (taskId: string) => void;
     onMoveTask: (projectId: string, taskId: string, toColumnId: string, position?: number) => void;
+    onCreateComment: (projectId: string, taskId: string, content: string) => void;
+    onUploadTaskAttachment: (projectId: string, taskId: string, file: File) => Promise<Attachment>;
+    onDeleteTaskAttachment: (projectId: string, taskId: string, attachmentId: string) => void;
 
     addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, onUpdateProject, onCreateColumn, taskToOpen, onClearTaskToOpen, onUpdateColumn, onMoveColumn, onDeleteColumn, onSendMessage, onCreateTask, onUpdateTask, onDeleteTask, onMoveTask, addToast }) => {
+const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, onUpdateProject, onCreateColumn, taskToOpen, onClearTaskToOpen, onUpdateColumn, onMoveColumn, onDeleteColumn, onSendMessage, onCreateTask, onUpdateTask, onDeleteTask, onMoveTask, onCreateComment, onUploadTaskAttachment, onDeleteTaskAttachment, addToast }) => {
     const [tasks, setTasks] = useState(project.tasks);
     const [columns, setColumns] = useState(project.columns);
     const [columnOrder, setColumnOrder] = useState(project.columnOrder);
@@ -326,10 +327,14 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     const handleCloseTaskModal = () => {
         setSelectedTask(null);
     };
+
+    const handleCreateTask = (newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => {
+        const p = onCreateTask(project.id, newTaskData, columnId);
+        setCreateTaskModalOpen(false)
+        return p;
+    };
     
     const handleUpdateTask = (updatedTask: Task) => {
-        const newTasks = {...tasks, [updatedTask.id]: updatedTask };
-        setTasks(newTasks);
         onUpdateTask(project.id, updatedTask.id, updatedTask)
     };
     
@@ -348,15 +353,21 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         setSelectedTask(null);
     };
 
+    const handleCreateComment = (taskId: string, content: string) => {
+        onCreateComment(project.id, taskId, content);
+    };
+
+    const handleUploadAttachment = (taskId: string, file: File) => {
+        return onUploadTaskAttachment(project.id, taskId, file);
+    };
+
+    const handleDeleteAttachment = (attachmentId: string) => {
+        onDeleteTaskAttachment(project.id, selectedTask.id, attachmentId);
+    };
+
     const handleAddTask = (columnId: string) => {
         setColumnForNewTask(columnId);
         setCreateTaskModalOpen(true);
-    };
-
-    const handleCreateTask = (newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => {
-        const p = onCreateTask(project.id, newTaskData, columnId);
-        setCreateTaskModalOpen(false)
-        return p;
     };
     
     const handleSendMessage = (content: string) => {
@@ -400,7 +411,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         setColumnToDelete(null);
     };
 
-    const allTags = Array.from(new Set(Object.values(tasks).flatMap(task => task.tags)));
     const projectMembers = team.members.map(m => m.user);
     const isTeamAdmin = team.members.find(m => m.user.id === currentUser.id)?.role === 'admin';
 
@@ -587,6 +597,9 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     projectMembers={projectMembers}
                     currentUser={currentUser}
                     isTeamAdmin={isTeamAdmin}
+                    onCreateComment={handleCreateComment}
+                    onUploadAttachment={handleUploadAttachment}
+                    onDeleteAttachment={handleDeleteAttachment}
                 />
             )}
             
@@ -594,10 +607,10 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                 <CreateTaskModal
                     onClose={() => setCreateTaskModalOpen(false)}
                     onCreateTask={handleCreateTask}
-                    onUpdateTask={handleUpdateTask}
                     columnId={columnForNewTask}
                     projectMembers={projectMembers}
                     allTags={Array.from(new Set(Object.values(tasks).flatMap(task => task.tags)))}
+                    onUploadAttachment={handleUploadAttachment}
                 />
             )}
             

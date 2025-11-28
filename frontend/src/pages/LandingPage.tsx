@@ -1,18 +1,6 @@
 
 import React, { useState } from 'react';
-import { 
-    Layout, 
-    MessageSquare, 
-    PieChart, 
-    Users, 
-    ArrowRight, 
-    Zap,
-    Columns,
-    Menu,
-    X,
-    Sun,
-    Moon
-} from 'lucide-react';
+import { Layout, MessageSquare, PieChart, Users, ArrowRight, Zap, Columns, Menu, X, Sun, Moon } from 'lucide-react';
 
 interface LandingPageProps {
     onNavigate: (mode: 'signin' | 'signup') => void;
