@@ -30,7 +30,7 @@ const ProjectFilters: React.FC<ProjectFiltersProps> = ({
     const hasActiveFilters = filters.assignee !== 'all' || filters.priority !== 'all' || filters.search !== '' || !filters.showCompleted;
 
     return (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
             {/* Search */}
             <div className="relative w-full sm:w-64">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

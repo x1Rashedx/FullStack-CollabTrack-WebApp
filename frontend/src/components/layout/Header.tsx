@@ -120,7 +120,7 @@ const Header: React.FC<HeaderProps> = ({
     const pageTitle = currentPage.charAt(0).toUpperCase() + currentPage.slice(1);
 
     return (
-        <header className="h-16 bg-white dark:bg-gray-800 border-b dark:border-gray-700 flex items-center justify-between px-6 flex-shrink-0 z-20">
+        <header className="h-16  bg-white dark:bg-gray-900 border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between px-6 flex-shrink-0 z-30">
             <div className="min-w-0">
                 <h1 className="text-xl font-semibold text-gray-800 dark:text-white truncate">
                     {currentProject && currentPage === 'project' ? (

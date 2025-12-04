@@ -11,7 +11,7 @@ import {
   DragOverlay,
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { Columns, Calendar as CalendarIcon, PieChart, List, Info, Filter, ChevronDown } from 'lucide-react';
+import { Columns, Calendar as CalendarIcon, PieChart, List, Info, Filter, ChevronDown, LayoutGrid, Plus } from 'lucide-react';
 
 import type { Project, User, Task, Team, Attachment, Comment } from '@/types';
 import { KanbanBoard, KanbanColumn, KanbanTask, TaskModal, TasksListView } from '@/components/features/tasks';
@@ -21,6 +21,7 @@ import { TaskWithStatus } from '@/components/features/tasks/TasksListView';
 
 import CalendarView from '@/components/features/calendar/CalendarView';
 import Chat from '@/components/features/chat/Chat';
+import { Avatar } from '@/components/common';
 
 interface ProjectPageProps {
     project: Project;
@@ -69,6 +70,16 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     }, [chatWidth]);
 
     const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+
+    // --- Computed Stats ---
+    const projectStats = useMemo(() => {
+        const allTasks = Object.values(tasks) as Task[];
+        const total = allTasks.length;
+        const completed = allTasks.filter(t => t.completed).length;
+        const overdue = allTasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < new Date()).length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { total, completed, overdue, progress };
+    }, [tasks]);
 
     // Filter & Sort States
     const [filters, setFilters] = useState({
@@ -417,72 +428,127 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     const showFilterBar = showFilters && (view === 'board' || view === 'calendar' || view === 'list');
 
     return (
-        <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex-shrink-0 px-6 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="inline-flex rounded-md shadow-sm" role="group">
-                        <button
-                            onClick={() => setView('board')}
-                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-lg border ${view === 'board' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                        >
-                            <Columns size={16} className="mr-2" />
-                            Board
-                        </button>
-                        <button
-                            onClick={() => setView('list')}
-                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'list' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                        >
-                            <List size={16} className="mr-2" />
-                            Tasks
-                        </button>
-                        <button
-                            onClick={() => setView('calendar')}
-                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'calendar' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                        >
-                            <CalendarIcon size={16} className="mr-2" />
-                            Calendar
-                        </button>
-                        <button
-                            onClick={() => setView('stats')}
-                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium border ${view === 'stats' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                        >
-                            <PieChart size={16} className="mr-2" />
-                            Stats
-                        </button>
-                        <button
-                            onClick={() => setView('info')}
-                            className={`relative -ml-px inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border ${view === 'info' ? 'bg-brand-600 text-white border-brand-600 z-10' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'}`}
-                        >
-                            <Info size={16} className="mr-2" />
-                            Info
-                        </button>
+        <div className="flex-1 flex flex-col min-h-0 bg-brand-100/25 dark:bg-gray-900"> {/* Added background & blur here */}
+
+            {/* --- 1. Project Hero Header --- */}
+            <div className="glass bg-white dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 z-20 shadow-sm relative overflow-hidden">
+
+                <div className="flex flex-col gap-2 relative z-10">
+                    <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-lg ${team.icon} flex items-center justify-center text-white font-bold text-lg shadow-sm`}>
+                            {project.name.charAt(0)}
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">{project.name}</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 max-w-md">{project.description || 'No description provided.'}</p>
+                        </div>
                     </div>
-            
-                    {(view === 'board' || view === 'calendar' || view === 'list') && (
-                        <button 
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${
-                                showFilters 
-                                    ? 'bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-200' 
-                                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                            }`}
-                        >
-                            <div className="relative">
-                                <Filter size={16} />
-                                {hasActiveFilters && !showFilters && (
-                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-brand-500 rounded-full ring-2 ring-white dark:ring-gray-800"></span>
-                                )}
-                            </div>
-                            <span>Filter & Sort</span>
-                            <ChevronDown size={14} className={`transform transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
-                        </button>
-                    )}
+                </div>
+
+                <div className="flex items-center gap-6 relative z-10">
+                    <div className="hidden lg:flex items-center gap-4 border-r border-gray-200 dark:border-gray-700 pr-6">
+                        <div className="text-center">
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{projectStats.progress}%</p>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Progress</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{projectStats.total}</p>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Tasks</p>
+                        </div>
+                        <div className="text-center">
+                            <p className={`text-2xl font-bold ${projectStats.overdue > 0 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}>{projectStats.overdue}</p>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Overdue</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex -space-x-2">
+                            {projectMembers.slice(0, 5).map(m => (
+                                <div key={m.id} className="ring-2 ring-white dark:ring-gray-800 rounded-full cursor-pointer hover:scale-110 transition-transform relative group">
+                                    <Avatar user={m} className="h-8 w-8" />
+                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                        {m.name}
+                                    </div>
+                                </div>
+                            ))}
+                            {projectMembers.length > 5 && (
+                                <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 flex items-center justify-center text-xs font-bold text-gray-500">
+                                    +{projectMembers.length - 5}
+                                </div>
+                            )}
+                        </div>
+                        {isTeamAdmin && (
+                            <button className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 font-medium hover:underline">
+                                Manage Members
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
+            {/* --- 2. Unified Control Bar --- */}
+            <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0 z-10 sticky top-0">
+                <div className="flex items-center bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+                    {[
+                        { id: 'board', icon: Columns, label: 'Board' },
+                        { id: 'list', icon: List, label: 'List' },
+                        { id: 'calendar', icon: CalendarIcon, label: 'Calendar' },
+                        { id: 'stats', icon: PieChart, label: 'Stats' },
+                        { id: 'info', icon: Info, label: 'Info' },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setView(tab.id as any)}
+                            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                                view === tab.id
+                                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
+                            }`}
+                        >
+                            <tab.icon size={16} />
+                            <span className="hidden sm:inline">{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    {(view === 'board' || view === 'calendar' || view === 'list') && (
+                        <>
+                            <button 
+                                onClick={() => setShowFilters(!showFilters)}
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${
+                                    hasActiveFilters 
+                                        ? 'bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-200' 
+                                        : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                            >
+                                <div className="relative">
+                                    <Filter size={16} />
+                                    {hasActiveFilters && !showFilters && (
+                                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-brand-500 rounded-full ring-2 ring-white dark:ring-gray-800"></span>
+                                    )}
+                                </div>
+                                <span className="hidden sm:inline">Filter & Sort</span>
+                                <ChevronDown size={14} className={`transform transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
+                            </button>
+                            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
+                        </>
+                    )}
+                    
+                    <button 
+                        onClick={() => {setColumnForNewTask(columnOrder[0]); setCreateTaskModalOpen(true)} }
+                        className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all transform hover:scale-105 active:scale-95"
+                    >
+                        <Plus size={18} />
+                        <span className="hidden sm:inline">New Task</span>
+                    </button>
+                </div>
+            </div>
+            
+            {/* Filter Drawer */}
             <div 
-                className={`grid transition-[grid-template-rows] duration-150 ease-in-out ${
-                    showFilterBar ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                className={`grid transition-[grid-template-rows] duration-300 ease-in-out border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 z-10 backdrop-blur-sm ${
+                    showFilters ? 'grid-rows-[1fr]' : 'grid-rows-[0fr] border-none'
                 }`}
             >
                 <div className="overflow-hidden">
@@ -498,7 +564,8 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                 </div>
             </div>
 
-            <div className="flex-1 flex min-h-0">
+            {/* --- 3. Main Content Area --- */}
+            <div className="flex-1 flex min-h-0 relative z-0"> {/* Adjusted z-index */}
                 {view === 'board' ? (
                     <DndContext
                         sensors={sensors}
@@ -507,13 +574,12 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                         onDragOver={handleDragOver}
                         onDragEnd={handleDragEnd}
                     >
-                        <div className="flex-1 flex flex-col min-w-0 bg-gray-100 dark:bg-gray-900">
                             <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
                                 <KanbanBoard
                                     columns={columns}
                                     columnOrder={columnOrder}
                                     tasks={tasks}
-                                    processedTasksMap={processedTasksMap} // Pass processed tasks
+                                    processedTasksMap={processedTasksMap}
                                     onTaskClick={handleTaskClick}
                                     onAddTask={handleAddTask}
                                     onCreateColumn={handleCreateColumn}
@@ -526,8 +592,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                             <DragOverlay>
                                 {activeDragType === 'task' && activeTask && (
                                     <div style={{
-                                        transform: 'rotate(3deg) scale(1.05)',
-                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                                        transform: 'rotate(4deg) scale(1.05)',
                                         width: activeTaskWidth ? `${activeTaskWidth}px` : 'auto',
                                     }}>
                                     <KanbanTask task={activeTask} onClick={() => {}} />
@@ -535,8 +600,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                                 )}
                                 {activeDragType === 'column' && activeColumn && (
                                     <div style={{
-                                        transform: 'rotate(1deg)',
-                                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                                        transform: 'rotate(3deg)',
                                         height: '100%',
                                     }}>
                                         <KanbanColumn
@@ -552,7 +616,6 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                                     </div>
                                 )}
                             </DragOverlay>
-                        </div>
                     </DndContext>
                 ) : view === 'list' ? (
                     <TasksListView 
@@ -569,11 +632,12 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                 ) : view === 'stats' ? (
                     <ProjectStats project={project} members={projectMembers} />
                 ) : (
-                    <ProjectInfo
-                        project={project}
-                        team={team}
+                    <ProjectInfo 
+                        project={project} 
+                        team={team} 
                         isTeamAdmin={isTeamAdmin}
                         onUpdateProject={onUpdateProject}
+                        //onDeleteProject={() => onDeleteProject(project.id)}
                     />
                 )}
                 
@@ -588,6 +652,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                 />
             </div>
             
+            {/* Modals */}
             {selectedTask && (
                 <TaskModal 
                     task={selectedTask} 
@@ -609,8 +674,8 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     onCreateTask={handleCreateTask}
                     columnId={columnForNewTask}
                     projectMembers={projectMembers}
-                    allTags={Array.from(new Set(Object.values(tasks).flatMap(task => task.tags)))}
                     onUploadAttachment={handleUploadAttachment}
+                    allTags={Array.from(new Set(Object.values(tasks).flatMap((task: Task) => task.tags)))}
                 />
             )}
             

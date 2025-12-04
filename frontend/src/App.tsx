@@ -18,6 +18,7 @@ import SearchPage from '@pages/SearchPage';
 // Services & Types
 import { authService, projectService, taskService, columnService, teamService, messageService, userService, fetchVersion } from '@services/index';
 import type { Project, Task, User, Team, DirectMessage, Folder } from '@/types';
+import { Layout } from 'lucide-react';
 
 
 function App() {
@@ -658,8 +659,11 @@ function App() {
 
     if (isLoading) {
         return (
-            <div className="h-screen w-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-                <Spinner />
+            <div className="h-screen w-screen flex items-center justify-center flex-col bg-gradient-to-br from-primary-50/50 via-white to-primary-50/50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 animate-gradient-xy bg-[length:400%_400%] text-gray-900 dark:text-gray-100">
+                <Layout size={64} className="text-primary-500 mb-6 animate-float" />
+                <h1 className="text-3xl font-bold opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>CollabTrack</h1>
+                <p className="text-sm text-gray-500 mt-2 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s' }}>Loading workspace...</p>
+                <Spinner className="mt-8" /> {/* Re-use Spinner, can add specific classes here */}
             </div>
         );
     }
@@ -704,7 +708,7 @@ function App() {
     const currentTeamForProject = currentProject ? teams[currentProject.teamId] : null;
 
     return (
-        <div className="h-screen w-screen flex bg-gray-100 dark:bg-gray-900 overflow-hidden relative">
+        <div className="h-screen w-screen flex overflow-hidden bg-brand-100/25 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
             {showOnboarding && <OnboardingModal onClose={handleCloseOnboarding} />}
             {viewingUser && (
                 <UserProfileModal
@@ -725,6 +729,7 @@ function App() {
                 folders={Object.values(folders)}
                 currentProjectId={currentProjectId}
                 onSelectProject={handleSelectProject}
+                teams={teams}
                 onNavigate={handleNavigate}
                 currentPage={currentPage}
                 onCreateFolder={handleCreateFolder}
@@ -752,11 +757,11 @@ function App() {
                     currentPage={currentPage}
                  />
                  <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onCreateTeam={handleCreateTeam}/></div>}
+                    {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onSelectTask={handleSelectTaskFromSearch}/></div>}
                     {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
                     {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
-                    {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} />}
+                    {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} allUsers={users} allTeams={teams} />}
                     {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onSelectTask={handleSelectTaskFromSearch} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
                 </main>
             </div>

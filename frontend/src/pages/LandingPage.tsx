@@ -22,7 +22,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isDarkMode, onTog
                             <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white">
                                 <Layout size={20} />
                             </div>
-                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-blue-500">
+                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-brand-500">
                                 CollabTrack
                             </span>
                         </div>

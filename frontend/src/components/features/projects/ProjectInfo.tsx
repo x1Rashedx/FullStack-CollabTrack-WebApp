@@ -1,35 +1,37 @@
-
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Users, Hash, CheckSquare, AlignLeft, Edit2 } from 'lucide-react';
-import type { Project, Team } from '@/types';
+import { Briefcase, Users, Hash, AlignLeft, Edit2, Trash2 } from 'lucide-react';
+import type { Project, Team, Task } from '@/types';
 import Avatar from '@components/common/Avatar';
+import ConfirmationModal from '@components/modals/ConfirmationModal';
 
 interface ProjectInfoProps {
     project: Project;
     team: Team;
     isTeamAdmin: boolean;
     onUpdateProject: (updatedProject: Project) => void;
+    onDeleteProject?: () => void;
 }
 
-const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, onUpdateProject }) => {
+const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, onUpdateProject, onDeleteProject }) => {
     const taskCount = Object.keys(project.tasks).length;
-    const completedCount = Object.values(project.tasks).filter(t => t.completed).length;
+    const completedCount = Object.values(project.tasks).filter((t: Task) => t.completed).length;
+    const completionPercentage = taskCount > 0 ? Math.round((completedCount / taskCount) * 100) : 0;
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [editingName, setEditingName] = useState(project.name);
     
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [editingDescription, setEditingDescription] = useState(project.description);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         setEditingName(project.name);
         setEditingDescription(project.description);
-    }, [project.name, project.description]);
+    }, [project]);
 
     const handleSaveName = () => {
         if (editingName.trim() && editingName !== project.name) {
             onUpdateProject({ ...project, name: editingName.trim() });
-            project.name = editingName.trim();
         }
         setIsEditingName(false);
     };
@@ -37,9 +39,19 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
     const handleSaveDescription = () => {
         if (editingDescription !== project.description) {
             onUpdateProject({ ...project, description: editingDescription });
-            project.description = editingDescription;
         }
         setIsEditingDescription(false);
+    };
+    
+    const handleDeleteClick = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = () => {
+        if (onDeleteProject) {
+            onDeleteProject();
+        }
+        setShowDeleteConfirm(false);
     };
 
     return (
@@ -163,40 +175,49 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                         </h3>
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
-                                        <CheckSquare size={18} />
-                                    </div>
-                                    <span className="font-medium text-gray-700 dark:text-gray-200">Total Tasks</span>
-                                </div>
+                                <span className="text-gray-600 dark:text-gray-300 text-sm">Total Tasks</span>
                                 <span className="font-bold text-gray-900 dark:text-white">{taskCount}</span>
                             </div>
-
                             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg">
-                                        <CheckSquare size={18} />
-                                    </div>
-                                    <span className="font-medium text-gray-700 dark:text-gray-200">Completed</span>
-                                </div>
-                                <span className="font-bold text-gray-900 dark:text-white">{completedCount}</span>
+                                <span className="text-gray-600 dark:text-gray-300 text-sm">Completed Tasks</span>
+                                <span className="font-bold text-green-600 dark:text-green-400">{completedCount}</span>
                             </div>
-                            
-                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
-                                        <Users size={18} />
-                                    </div>
-                                    <span className="font-medium text-gray-700 dark:text-gray-200">Contributors</span>
+                             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <span className="text-gray-600 dark:text-gray-300 text-sm">Completion Rate</span>
+                                <span className="font-bold text-brand-600 dark:text-brand-400">{completionPercentage}%</span>
+                            </div>
+                            <div className="pt-2">
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                    <div className="bg-brand-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${completionPercentage}%` }}></div>
                                 </div>
-                                <span className="font-bold text-gray-900 dark:text-white">
-                                    {new Set(Object.values(project.tasks).flatMap(t => t.assignees.map(a => a.id))).size}
-                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {isTeamAdmin && onDeleteProject && (
+                    <div className="bg-red-50 dark:bg-red-900/10 rounded-xl shadow-sm p-6 border border-red-100 dark:border-red-900/30 mt-8">
+                        <h3 className="text-lg font-semibold text-red-800 dark:text-red-400 mb-2">Danger Zone</h3>
+                        <p className="text-sm text-red-600 dark:text-red-300 mb-4">
+                            Deleting this project will permanently remove all tasks, columns, and history. This action cannot be undone.
+                        </p>
+                        <button 
+                            onClick={handleDeleteClick}
+                            className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors shadow-sm"
+                        >
+                            <Trash2 size={16} className="mr-2" /> Delete Project
+                        </button>
+                    </div>
+                )}
             </div>
+             <ConfirmationModal
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                onConfirm={confirmDelete}
+                title="Delete Project"
+                message={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`}
+                confirmText="Delete Project"
+            />
         </div>
     );
 };

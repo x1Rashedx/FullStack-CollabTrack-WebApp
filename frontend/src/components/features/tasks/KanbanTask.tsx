@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { MessageSquare, Paperclip, Calendar, CheckCircle } from 'lucide-react';
+import { MessageSquare, Paperclip, Calendar, CheckCircle, CheckSquare } from 'lucide-react';
 import type { Task } from '@/types';
 import Avatar from '@components/common/Avatar';
 
@@ -12,9 +11,9 @@ interface KanbanTaskProps {
 }
 
 const priorityColors = {
-    low: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-    medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
-    high: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+    low: 'bg-success-status-100 text-success-status-800 dark:bg-success-status-900/50 dark:text-success-status-300',
+    medium: 'bg-warning-status-100 text-warning-status-800 dark:bg-warning-status-900/50 dark:text-warning-status-300',
+    high: 'bg-error-status-100 text-error-status-800 dark:bg-error-status-900/50 dark:text-error-status-300',
 };
 
 const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
@@ -37,6 +36,11 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
     
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
 
+    // Calculate subtask progress
+    const subtasks = task.subtasks || [];
+    const completedSubtasks = subtasks.filter(st => st.completed).length;
+    const totalSubtasks = subtasks.length;
+
     return (
         <div 
             ref={setNodeRef} 
@@ -44,17 +48,17 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
             {...attributes} 
             {...listeners}
             onClick={onClick}
-            className={`bg-white dark:bg-gray-800 rounded-lg shadow p-3 cursor-pointer hover:shadow-md relative group ${task.completed ? 'ring-2 ring-green-500/50 dark:ring-green-500/30' : ''}`}
+            className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-3 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-200 relative group ${task.completed ? 'ring-2 ring-success-status-500/50 dark:ring-success-status-500/30' : ''}`}
         >
             <div className="flex justify-between items-start">
                  <div className="flex items-start gap-2">
                     {task.completed && (
-                        <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle size={16} className="text-success-status-500 mt-0.5 flex-shrink-0" />
                     )}
                     <p className={`text-sm font-medium text-gray-800 dark:text-gray-100 break-words ${task.completed ? 'line-through text-gray-500 dark:text-gray-500' : ''}`}>{task.title}</p>
                  </div>
                  <div className="flex flex-col items-end gap-1">
-                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${priorityColors[task.priority]}`}>{task.priority}</span>
+                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority]}`}>{task.priority}</span>
                      <span className="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 rounded border dark:border-gray-600" title="Task Weight">
                          {task.weight || 1}
                      </span>
@@ -68,7 +72,7 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
             {task.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                     {task.tags.map(tag => (
-                        <span key={tag} className="px-1.5 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{tag}</span>
+                        <span key={tag} className="px-1.5 py-0.5 text-xs rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600">{tag}</span>
                     ))}
                 </div>
             )}
@@ -93,19 +97,25 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
                     ))}
                 </div>
                  <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400">
+                    {totalSubtasks > 0 && (
+                        <div className={`flex items-center ${completedSubtasks === totalSubtasks ? 'text-success-status-500' : 'hover:text-primary-500'} transition-colors`} title={`${completedSubtasks}/${totalSubtasks} subtasks completed`}>
+                            <CheckSquare size={12} className="mr-1"/>
+                            {completedSubtasks}/{totalSubtasks}
+                        </div>
+                    )}
                     {task.dueDate && (
-                        <div className={`flex items-center ${isOverdue ? 'text-red-500' : ''}`}>
+                        <div className={`flex items-center ${isOverdue ? 'text-error-status-500 font-medium' : ''}`}>
                             <Calendar size={12} className="mr-1"/>
                             {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
                     )}
                     {task.comments && task.comments.length > 0 && (
-                        <div className="flex items-center">
+                        <div className="flex items-center hover:text-primary-500 transition-colors">
                             <MessageSquare size={12} className="mr-1"/> {task.comments.length}
                         </div>
                     )}
                     {task.attachments && task.attachments.length > 0 && (
-                        <div className="flex items-center">
+                        <div className="flex items-center hover:text-primary-500 transition-colors">
                             <Paperclip size={12} className="mr-1"/> {task.attachments.length}
                         </div>
                     )}

@@ -61,7 +61,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ column, tasks, onTaskClick,
     return (
         <div 
             ref={setNodeRef}
-            className={`w-72 h-full flex flex-col flex-shrink-0 bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg transition-all duration-200 ${isDropZoneActive ? 'bg-sky-100 dark:bg-sky-900/50 ring-2 ring-sky-500 ring-inset' : ''}`}
+            className={`glass-panel bg-white/50 w-72 h-full flex flex-col flex-shrink-0 p-2 rounded-lg transition-all duration-200 ${isDropZoneActive ? 'bg-brand-100 dark:bg-brand-900/50 ring-2 ring-brand-500 ring-inset' : ''}`}
         >
             <div className="flex justify-between items-center mb-4 px-1 group">
                 {isEditing ? (

@@ -1,19 +1,22 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import type { Project, Folder } from '@/types';
-import { LayoutDashboard, Columns, Users, Settings, MessageCircle, Folder as FolderIcon, ChevronDown, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, GripVertical } from 'lucide-react';
+import type { Project, Folder, Team } from '@/types';
+import { LayoutDashboard, Columns, Users, Settings, MessageCircle, Folder as FolderIcon, ChevronDown, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, GripVertical, Sparkles } from 'lucide-react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useDroppable } from '@dnd-kit/core';
-import ConfirmationModal from '@components/modals/ConfirmationModal';
+import ConfirmationModal from '@/components/modals/ConfirmationModal';
 
 
 interface SidebarProps {
     projects: Project[];
+    teams: { [key: string]: Team };
     folders: Folder[];
     currentProjectId: string | null;
     onSelectProject: (projectId: string) => void;
-    onNavigate: (page: 'dashboard' | 'teams' | 'settings' | 'messages') => void;
+    // New: Added 'ai' to onNavigate page types
+    onNavigate: (page: 'dashboard' | 'teams' | 'settings' | 'messages') => void; 
     currentPage: string;
     onCreateFolder: (name: string) => void;
     onDeleteFolder: (folderId: string) => void;
@@ -27,7 +30,7 @@ interface SidebarProps {
 const MIN_WIDTH = 220;
 const MAX_WIDTH = 400;
 
-const Sidebar: React.FC<SidebarProps> = ({ projects, folders, currentProjectId, onSelectProject, onNavigate, currentPage, onCreateFolder, onDeleteFolder, onMoveProject, isCollapsed, onToggleCollapse, width, onResize }) => {
+const Sidebar: React.FC<SidebarProps> = ({ projects, teams, folders, currentProjectId, onSelectProject, onNavigate, currentPage, onCreateFolder, onDeleteFolder, onMoveProject, isCollapsed, onToggleCollapse, width, onResize }) => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isResizing, setIsResizing] = useState(false);
 
@@ -102,34 +105,34 @@ const Sidebar: React.FC<SidebarProps> = ({ projects, folders, currentProjectId, 
     const activeProject = activeId ? projects.find(p => p.id === activeId) : null;
     
     const NavItem: React.FC<{icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void}> = ({ icon, label, isActive, onClick }) => (
-         <a href="#" onClick={(e) => { e.preventDefault(); onClick(); }} className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive ? 'bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+         <a href="#" onClick={(e) => { e.preventDefault(); onClick(); }} className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive ? 'bg-brand-100/50 dark:bg-brand-900/50 text-brand-700 dark:text-brand-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'}`}>
             {icon}
             {!isCollapsed && <span className="ml-3 whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>}
         </a>
     );
 
-    const categorizedProjectIds = new Set(folders?.flatMap(f => f.projectIds));
+    const categorizedProjectIds = new Set(folders.flatMap(f => f.projectIds));
     const uncategorizedProjects = projects.filter(p => !categorizedProjectIds.has(p.id));
 
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div 
-                className={`bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col ${isResizing ? '' : 'transition-all duration-300 ease-in-out'} relative flex-shrink-0`}
+                className={`flex flex-col bg-white dark:bg-gray-900/80 border border-gray-200/50 dark:border-gray-700/50 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'} relative flex-shrink-0 z-30`}
                 style={{ width: isCollapsed ? 80 : width }}
             >
                  <button 
                     onClick={onToggleCollapse} 
-                    className={`absolute top-1/2 -translate-y-1/2 right-0 translate-x-1/2 h-16 w-5 flex items-center justify-center bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 z-30 ${isResizing ? '' : 'transition-all duration-300 ease-in-out'} focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm hover:shadow-md`}
+                    className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-1/2 h-16 w-5 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 z-30 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm hover:shadow-md"
                     aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                     {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
                 </button>
-                <div className={`flex items-center h-16 border-b dark:border-gray-700 flex-shrink-0 px-4 ${isCollapsed ? 'justify-center' : 'justify-start'}`}>
+                <div className={`flex items-center h-16 border-b border-gray-200/50 dark:border-gray-700/50 flex-shrink-0 px-4 ${isCollapsed ? 'justify-center' : 'justify-start'}`}>
                     <div className="flex items-center">
-                        <svg className="w-8 h-8 text-brand-500" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-8 h-8 text-brand-500 animate-float" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
                         </svg>
-                        {!isCollapsed && <h1 className="text-xl font-bold text-gray-800 dark:text-white ml-2">CollabTrack</h1>}
+                        {!isCollapsed && <h1 className="text-xl font-bold text-gray-800 dark:text-white ml-2 bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-gray-500 dark:from-white dark:to-gray-400">CollabTrack</h1>}
                     </div>
                 </div>
 
@@ -148,11 +151,12 @@ const Sidebar: React.FC<SidebarProps> = ({ projects, folders, currentProjectId, 
                             {!isCollapsed && <AddFolderForm onCreate={onCreateFolder} />}
                         </div>
                         <div className="space-y-1">
-                            {folders?.map(folder => (
+                            {folders.map(folder => (
                                 <FolderItem 
                                     key={folder.id} 
                                     folder={folder}
                                     projects={projects.filter(p => folder.projectIds.includes(p.id))}
+                                    teams={teams}
                                     currentProjectId={currentProjectId}
                                     currentPage={currentPage}
                                     onSelectProject={onSelectProject}
@@ -171,9 +175,10 @@ const Sidebar: React.FC<SidebarProps> = ({ projects, folders, currentProjectId, 
                                                         key={project.id} 
                                                         project={project} 
                                                         isActive={project.id === currentProjectId && currentPage === 'project'}
-                                                        onClick={() => onSelectProject(project.id)}
+                                                        onClick={() => {onSelectProject(project.id)}}
                                                         isCollapsed={isCollapsed}
                                                         folderId={null}
+                                                        teamIcon={teams[project.teamId]?.icon}
                                                     />
                                                 ))}
                                             </SortableContext>
@@ -193,14 +198,14 @@ const Sidebar: React.FC<SidebarProps> = ({ projects, folders, currentProjectId, 
                     </div>
                 )}
                 <DragOverlay>
-                    {activeProject ? <ProjectLink project={activeProject} isActive={false} onClick={() => {}} isCollapsed={isCollapsed} isOverlay /> : null}
+                    {activeProject ? <ProjectLink project={activeProject} isActive={false} onClick={() => {}} isCollapsed={isCollapsed} isOverlay teamIcon={teams[activeProject.teamId]?.icon} /> : null}
                 </DragOverlay>
             </div>
         </DndContext>
     );
 };
 
-const DraggableProjectLink: React.FC<{project: Project; isActive: boolean; onClick: () => void; isCollapsed: boolean; folderId: string | null}> = ({ project, isActive, onClick, isCollapsed, folderId }) => {
+const DraggableProjectLink: React.FC<{project: Project; isActive: boolean; onClick: () => void; isCollapsed: boolean; folderId: string | null; teamIcon?: string}> = ({ project, isActive, onClick, isCollapsed, folderId, teamIcon }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: project.id,
         data: { type: 'project', folderId: folderId }
@@ -215,19 +220,19 @@ const DraggableProjectLink: React.FC<{project: Project; isActive: boolean; onCli
 
     return (
         <div ref={setNodeRef} style={style}>
-            <ProjectLink project={project} isActive={isActive} onClick={onClick} isCollapsed={isCollapsed} dragHandleListeners={listeners} dragHandleAttributes={attributes} />
+            <ProjectLink project={project} isActive={isActive} onClick={onClick} isCollapsed={isCollapsed} dragHandleListeners={listeners} dragHandleAttributes={attributes} teamIcon={teamIcon} />
         </div>
     )
 }
 
-const ProjectLink: React.FC<{project: Project; isActive: boolean; onClick: () => void; isCollapsed: boolean; isOverlay?: boolean; dragHandleListeners?: any; dragHandleAttributes?: any}> = ({ project, isActive, onClick, isCollapsed, isOverlay = false, dragHandleListeners, dragHandleAttributes }) => (
+const ProjectLink: React.FC<{project: Project; isActive: boolean; onClick: () => void; isCollapsed: boolean; isOverlay?: boolean; dragHandleListeners?: any; dragHandleAttributes?: any; teamIcon?: string}> = ({ project, isActive, onClick, isCollapsed, isOverlay = false, dragHandleListeners, dragHandleAttributes, teamIcon }) => (
     <div className={`flex items-center text-sm font-medium rounded-md group relative ${isOverlay ? 'bg-white dark:bg-gray-700 shadow-lg' : ''}`}>
         <a
             href="#"
             onClick={(e) => { e.preventDefault(); onClick(); }}
-            className={`flex-grow flex items-center pl-10 pr-3 py-2 rounded-md min-w-0 ${isActive ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            className={`flex-grow flex items-center pl-10 pr-3 py-2 rounded-md min-w-0 transition-colors ${isActive ? 'bg-gray-200/60 dark:bg-gray-700/60 text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'}`}
         >
-            <span className={`w-2 h-2 rounded-full ${project.id === 'proj-1' ? 'bg-blue-500' : 'bg-green-500'}`}></span>
+            <span className={`w-2 h-3 rounded-full ${teamIcon || 'bg-gray-300'}`}></span>
             {!isCollapsed && <span className="truncate ml-3">{project.name}</span>}
         </a>
         <div 
@@ -240,7 +245,7 @@ const ProjectLink: React.FC<{project: Project; isActive: boolean; onClick: () =>
     </div>
 );
 
-const FolderItem: React.FC<{folder: Folder, projects: Project[], currentProjectId: string | null, currentPage: string, onSelectProject: (id: string) => void, onDelete: () => void, isCollapsed: boolean}> = ({ folder, projects, currentProjectId, currentPage, onSelectProject, onDelete, isCollapsed }) => {
+const FolderItem: React.FC<{folder: Folder, projects: Project[], teams: { [key: string]: Team }, currentProjectId: string | null, currentPage: string, onSelectProject: (id: string) => void, onDelete: () => void, isCollapsed: boolean}> = ({ folder, projects, teams, currentProjectId, currentPage, onSelectProject, onDelete, isCollapsed }) => {
     const [isOpen, setIsOpen] = useState(true);
     const [isMenuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -260,7 +265,7 @@ const FolderItem: React.FC<{folder: Folder, projects: Project[], currentProjectI
     return (
         <div ref={setNodeRef} className={`outline-2 outline-offset-[-1px] ${isOver ? 'outline-dashed outline-brand-500 bg-brand-50/50 dark:bg-brand-900/20' : 'outline-transparent'} rounded-md transition-all duration-200`}>
             {!isCollapsed &&
-                <div className="flex items-center justify-between group px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                <div className="flex items-center justify-between group px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
                     <button onClick={() => setIsOpen(!isOpen)} className="flex items-center flex-grow text-left min-w-0">
                         <ChevronDown size={16} className={`mr-2 transform transition-transform ${isOpen ? 'rotate-0' : '-rotate-90'}`} />
                         <FolderIcon size={16} className="mr-2" />
@@ -271,7 +276,7 @@ const FolderItem: React.FC<{folder: Folder, projects: Project[], currentProjectI
                             <MoreHorizontal size={16} />
                         </button>
                         {isMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                            <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10 glass-panel">
                                 <div className="py-1">
                                     <button onClick={() => {setFolderToDelete(folder.id) ; setMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50">
                                     <Trash2 size={14} /> Delete
@@ -293,6 +298,7 @@ const FolderItem: React.FC<{folder: Folder, projects: Project[], currentProjectI
                                 onClick={() => onSelectProject(project.id)}
                                 isCollapsed={isCollapsed}
                                 folderId={folder.id}
+                                teamIcon={teams[project.teamId]?.icon}
                             />
                         ))}
                     </SortableContext>
@@ -360,7 +366,7 @@ const AddFolderForm: React.FC<{onCreate: (name: string) => void}> = ({ onCreate 
                 <Plus size={16} />
             </button>
             {isAdding && (
-                 <div ref={containerRef} className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-20 p-2 space-y-2">
+                 <div ref={containerRef} className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-20 p-2 space-y-2 glass-panel">
                     <input 
                         type="text"
                         value={name}
@@ -371,7 +377,7 @@ const AddFolderForm: React.FC<{onCreate: (name: string) => void}> = ({ onCreate 
                         className="w-full text-sm px-2 py-1.5 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 border focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
                     />
                     <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setIsAdding(false)} className="px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-white ">Cancel</button>
+                        <button onClick={() => setIsAdding(false)} className="px-2 py-1 text-xs font-semibold rounded hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
                         <button onClick={handleSubmit} className="px-2 py-1 text-xs font-semibold rounded bg-brand-600 text-white hover:bg-brand-700">Save</button>
                     </div>
                 </div>

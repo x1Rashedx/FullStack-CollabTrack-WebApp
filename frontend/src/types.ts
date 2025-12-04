@@ -27,6 +27,12 @@ export interface Folder {
   projectIds: string[];
 }
 
+export interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -40,6 +46,10 @@ export interface Task {
   comments: Comment[];
   weight: number;
   completed: boolean;
+
+  subtasks: Subtask[];
+  createdAt: string;
+  updatedAt: string; // New: Added updatedAt field
 }
 
 export interface Column {
@@ -54,6 +64,9 @@ export interface ChatMessage {
   author: {id: string, name: string, avatarUrl: string};
   content: string;
   timestamp: string;
+
+  attachments?: Attachment[];
+  parentId?: string;
 }
 
 export interface TeamMember {
@@ -88,4 +101,7 @@ export interface DirectMessage {
   receiverId: string;
   content: string;
   timestamp: string;
+
+  attachments?: Attachment[];
+  parentId?: string;
 }
