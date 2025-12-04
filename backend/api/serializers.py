@@ -109,15 +109,19 @@ class TaskSerializer(serializers.ModelSerializer):
 
     projectId = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all(), source="project", write_only=True)
 
+    createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
+
+
     class Meta:
         model = Task
         fields = [
             "id", "title", "description", "assignees", "assigneeIds",
             "dueDate", "priority", "tags", "attachments", "attachmentIds",
             "comments", "commentIds", "projectId", "weight", "completed",
-            "created_at", "updated_at"
+            "createdAt", "updatedAt"
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "createdAt", "updatedAt"]
 
     def create(self, validated_data):
         assignees = validated_data.pop("assignees", [])
@@ -172,7 +176,7 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
-    user = NestedUserSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True, source="user")
     class Meta:
         model = TeamMember
