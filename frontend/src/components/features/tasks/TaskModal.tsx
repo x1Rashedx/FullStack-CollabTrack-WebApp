@@ -310,15 +310,33 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                         <div className="flex items-center -space-x-2 ml-1">
                             {editableTask.assignees.length > 0 ? (
                                 editableTask.assignees.map(member => (
-                                    <div key={member.id} className="relative group/avatar cursor-pointer" onClick={() => isTeamAdmin && toggleAssignee(member)}>
-                                        <div className="ring-2 ring-white dark:ring-gray-800 rounded-full">
-                                            <Avatar user={member} className="h-6 w-6" />
+                                    <div key={member.id} className="relative group/avatar cursor-pointer hover:scale-110 transition-transform" onClick={() => isTeamAdmin && toggleAssignee(member)}>
+                                        <div className="ring-2 ring-white dark:ring-gray-800 rounded-full flex items-center">
+                                            <div className="relative">
+                                                <Avatar user={member} className="h-6 w-6" />
+                                                {isTeamAdmin && (
+                                                <div className={`absolute inset-0 flex items-center justify-center text-white text-xs font-bold opacity-0 group-hover/avatar:opacity-100 transition-opacity`}>
+                                                    <X size={18} />
+                                                </div>
+                                                )}
+                                            </div>
+
+                                            {editableTask.assignees.length === 1 && (
+                                                <span className="ml-1 mr-2 text-xs text-gray-700 dark:text-gray-300 font-medium whitespace-nowrap">
+                                                {member.name}
+                                                </span>
+                                            )}
+                                        
+                                            <div className="absolute mt-14 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                {member.name}
+                                            </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <span className="text-xs text-gray-400 italic ml-1">Unassigned</span>
+                                <span className="text-xs text-gray-400 italic mr-1">Unassigned</span>
                             )}
+                            <div className='p-3'></div>
                             {isTeamAdmin && (
                                 <button 
                                     ref={assigneeButtonRef}

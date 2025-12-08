@@ -431,7 +431,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         <div className="flex-1 flex flex-col min-h-0 bg-brand-100/25 dark:bg-gray-900"> {/* Added background & blur here */}
 
             {/* --- 1. Project Hero Header --- */}
-            <div className="glass bg-white dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 z-20 shadow-sm relative overflow-hidden">
+            <div className="glass bg-white dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 z-20 shadow-sm relative overflow-hidden">
 
                 <div className="flex flex-col gap-2 relative z-10">
                     <div className="flex items-center gap-4">
@@ -466,7 +466,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                             {projectMembers.slice(0, 5).map(m => (
                                 <div key={m.id} className="ring-2 ring-white dark:ring-gray-800 rounded-full cursor-pointer hover:scale-110 transition-transform relative group">
                                     <Avatar user={m} className="h-8 w-8" />
-                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                    <div className="absolute mb-2 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs mt-1 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                                         {m.name}
                                     </div>
                                 </div>
