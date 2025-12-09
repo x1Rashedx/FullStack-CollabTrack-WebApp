@@ -9,7 +9,7 @@ interface ProjectInfoProps {
     team: Team;
     isTeamAdmin: boolean;
     onUpdateProject: (updatedProject: Project) => void;
-    onDeleteProject?: () => void;
+    onDeleteProject: () => void;
 }
 
 const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, onUpdateProject, onDeleteProject }) => {

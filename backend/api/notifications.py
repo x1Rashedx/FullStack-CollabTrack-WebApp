@@ -195,16 +195,11 @@ def _deliver_notification_sync(notification: Notification, channels: List[str]):
                     )
                     fb_messaging.send(msg)
                 except Exception as exc:
-                    tb = traceback.format_exc()
-                    print(f"[notifications][_deliver_notification_sync] firebase send failed for token={token}: {exc}\n{tb}")
-                    # prune tokens that look invalid/unregistered
-                    txt = str(exc).lower()
-                    if any(x in txt for x in ("invalidregistration", "notregistered", "registration token is not a valid", "unregistered")):
-                        try:
-                            PushToken.objects.filter(token=token).delete()
-                            print(f"[notifications][_deliver_notification_sync] deleted invalid PushToken for token={token}")
-                        except Exception:
-                            pass
+                    try:
+                        PushToken.objects.filter(token=token).delete()
+                        print(f"[notifications][_deliver_notification_sync] deleted invalid PushToken for token={token}")
+                    except Exception:
+                        pass
 
         # Email via SendGrid
         if 'email' in (channels or []) and _have_sendgrid and getattr(settings, 'SENDGRID_API_KEY', None) and notification.user.email:
@@ -269,16 +264,11 @@ if _have_celery:
                         )
                         fb_messaging.send(msg)
                     except Exception as exc:
-                        tb = traceback.format_exc()
-                        print(f"[deliver_notification_task] firebase send failed for token={token}: {exc}\n{tb}")
-                        # prune tokens that are clearly invalid/unregistered
-                        txt = str(exc).lower()
-                        if any(x in txt for x in ("invalidregistration", "notregistered", "registration token is not a valid", "unregistered")):
-                            try:
-                                PushToken.objects.filter(token=token).delete()
-                                print(f"[deliver_notification_task] deleted invalid PushToken for token={token}")
-                            except Exception:
-                                pass
+                        try:
+                            PushToken.objects.filter(token=token).delete()
+                            print(f"[deliver_notification_task] deleted invalid PushToken for token={token}")
+                        except Exception:
+                            pass
             except Exception:
                 pass
 

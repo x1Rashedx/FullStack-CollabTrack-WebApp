@@ -19,11 +19,12 @@ interface HeaderProps {
     onSelectTask: (projectId: string, taskId: string) => void;
     onSearchSubmit: (query: string) => void;
     currentPage: string;
+    notifications: any[];
 }
 
 const Header: React.FC<HeaderProps> = ({ 
     currentProject, currentTeam, currentUser, isDarkMode, onToggleTheme, onNavigate, onLogout,
-    projects, allUsers, allTeams, onSelectTask, onSearchSubmit, currentPage
+    projects, allUsers, allTeams, onSelectTask, onSearchSubmit, currentPage, notifications
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<{
@@ -36,7 +37,6 @@ const Header: React.FC<HeaderProps> = ({
     
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
-    const [notifications, setNotifications] = useState<any[]>([]);
     const [isProfileOpen, setProfileOpen] = useState(false);
 
     const searchRef = useRef<HTMLDivElement>(null);
@@ -104,26 +104,9 @@ const Header: React.FC<HeaderProps> = ({
     }, []);
 
     useEffect(() => {
-        let mounted = true;
-        (async () => {
-            try {
-                const data: any = await notificationService.list();
-                if (!mounted) return;
-                setNotifications(Array.isArray(data) ? data : []);
-                const unread = (data || []).filter((n: any) => !n.read).length;
-                setHasUnread(unread > 0);
-                // Try to register for push notifications (best-effort)
-                try {
-                    await registerForPush();
-                } catch (e) {
-                    // ignore errors from push registration
-                }
-            } catch (e) {
-                // silently ignore
-            }
-        })();
-        return () => { mounted = false; };
-    }, []);
+        const unread = (notifications || []).filter((n: any) => !n.read).length;
+        setHasUnread(unread > 0);
+    }, [notifications]);
 
     const handleSelectTask = (projectId: string, taskId: string) => {
         onSelectTask(projectId, taskId);

@@ -18,6 +18,10 @@ export default defineConfig(({ mode }) => {
         '127.0.0.1',
         env.VITE_URL.replace(/^https?:\/\//, ''),
       ],
+      watch: {
+        usePolling: true,
+        interval: 10, // optional, faster updates
+      }
     },
     plugins: [
       react(),

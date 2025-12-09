@@ -58,7 +58,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
         fetchVersion++;
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
         
-        if (response.status === 401) {
+        if (response.status === 401 && endpoint !== '/push-tokens/') {
             clearAuthToken();
             window.location.reload();
             throw new Error("Session expired. Please log in again.");

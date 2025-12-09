@@ -26,7 +26,6 @@ dist-ssr
 
 *.sqlite3
 __pycache__
-migrations
 backend/database/media/avatars/*
 backend/database/media/attachments/*
 backend/database/db.sqlite3

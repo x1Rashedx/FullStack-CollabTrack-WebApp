@@ -29,6 +29,7 @@ interface ProjectPageProps {
     currentUser: User;
     taskToOpen: string | null;
     onUpdateProject: (updatedProject: Project) => void;
+    onDeleteProject: (projectId: string) => void;
     onClearTaskToOpen: () => void;
 
     onCreateColumn: (projectId: string, title: string) => void;
@@ -49,7 +50,7 @@ interface ProjectPageProps {
     addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, onUpdateProject, onCreateColumn, taskToOpen, onClearTaskToOpen, onUpdateColumn, onMoveColumn, onDeleteColumn, onSendMessage, onCreateTask, onUpdateTask, onDeleteTask, onMoveTask, onCreateComment, onUploadTaskAttachment, onDeleteTaskAttachment, addToast }) => {
+const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, onUpdateProject, onDeleteProject, onCreateColumn, taskToOpen, onClearTaskToOpen, onUpdateColumn, onMoveColumn, onDeleteColumn, onSendMessage, onCreateTask, onUpdateTask, onDeleteTask, onMoveTask, onCreateComment, onUploadTaskAttachment, onDeleteTaskAttachment, addToast }) => {
     const [tasks, setTasks] = useState(project.tasks);
     const [columns, setColumns] = useState(project.columns);
     const [columnOrder, setColumnOrder] = useState(project.columnOrder);
@@ -637,7 +638,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                         team={team} 
                         isTeamAdmin={isTeamAdmin}
                         onUpdateProject={onUpdateProject}
-                        //onDeleteProject={() => onDeleteProject(project.id)}
+                        onDeleteProject={() => onDeleteProject(project.id)}
                     />
                 )}
                 

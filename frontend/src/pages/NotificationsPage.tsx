@@ -103,9 +103,9 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
             const projectName = data.projectName || '';
             
             if (projectName) {
-                return `${actorName} assigned you to the task [ ${taskTitle} ] in ${projectName}`;
+                return `${actorName} assigned you to the task <u><b>${taskTitle}</b></u> in <u><b>${projectName}</b></u>`;
             }
-            return `${actorName} assigned you to the task [ ${taskTitle} ]`;
+            return `${actorName} assigned you to the task <u><b>${taskTitle}</b></u>`;
         }
         
         // Fallback
@@ -226,7 +226,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
                                                             {formatNotificationTitle(notification)}
                                                         </p>
                                                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                                                            {formatNotificationBody(notification)}
+                                                            <div dangerouslySetInnerHTML={{ __html: formatNotificationBody(notification) }} />
                                                         </p>
                                                         <div className="flex items-center space-x-3 mt-2">
                                                             {actor && (

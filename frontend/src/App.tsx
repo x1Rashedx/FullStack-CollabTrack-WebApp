@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 
 // Layout & Components
 import { Sidebar, Header } from '@components/layout';
@@ -17,9 +17,10 @@ import SearchPage from '@pages/SearchPage';
 import NotificationsPage from '@pages/NotificationsPage';
 
 // Services & Types
-import { authService, projectService, taskService, columnService, teamService, messageService, userService, fetchVersion } from '@services/index';
+import { authService, projectService, taskService, columnService, teamService, messageService, userService, fetchVersion, registerForPush } from '@services/index';
 import type { Project, Task, User, Team, DirectMessage, Folder } from '@/types';
 import { Layout } from 'lucide-react';
+import { on } from 'events';
 
 
 function App() {
@@ -73,6 +74,17 @@ function App() {
     useEffect(() => {
         localStorage.setItem("sidebarWidth", sidebarWidth.toString());
     }, [sidebarWidth]);
+
+    useEffect(() => {
+        // Try to register for push notifications (best-effort)
+        (async () => {
+        try {
+            await registerForPush();
+        } catch (e) {
+            // ignore errors from push registration
+        }
+        })();
+    }, []);
 
 
     // useEffect(() => {
@@ -280,6 +292,21 @@ function App() {
                 addToast('Project created successfully!', 'success');
             })
             .catch(() => addToast('Failed to create project.', 'error'));
+    };
+
+    const handleDeleteProject = async (projectId: string) => {
+        projectService.delete(projectId)
+            .then(() => {
+                setProjects(prev => {
+                    const updated = { ...prev };
+                    delete updated[projectId];
+                    return updated;
+                });
+                addToast('Project deleted successfully!', 'success');
+                handleNavigate('teams');
+                setCurrentProjectId(null);
+            })
+            .catch(() => addToast('Failed to delete project.', 'error'));
     };
 
     const handleNavigate = (page: 'dashboard' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications') => {
@@ -549,6 +576,19 @@ function App() {
             .catch(() => addToast('Failed to update team.', 'error'));
     };
 
+    const handleDeleteTeam = (teamId: string) => {
+        teamService.delete(teamId)
+            .then(() => {
+                    setTeams(prev => {
+                    const updated = { ...prev };
+                    delete updated[teamId];
+                    return updated;
+                });
+                    addToast('Team deleted.', 'info');
+            })
+            .catch(() => addToast('Failed to delete team.', 'error'));
+    };
+
     const handleStartConversation = (partnerId: string) => {
         setCurrentConversationPartnerId(partnerId);
         handleNavigate('messages');
@@ -760,11 +800,12 @@ function App() {
                     onSelectTask={handleSelectTaskFromSearch}
                     onSearchSubmit={handleSearchSubmit}
                     currentPage={currentPage}
+                    notifications={Object.values(notifications)}
                  />
                  <main className="flex-1 flex flex-col overflow-hidden min-h-0">
                     {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onSelectTask={handleSelectTaskFromSearch}/></div>}
-                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
-                    {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
+                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
+                    {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onDeleteTeam={handleDeleteTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
                     {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} allUsers={users} allTeams={teams} />}
                     {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onSelectTask={handleSelectTaskFromSearch} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
