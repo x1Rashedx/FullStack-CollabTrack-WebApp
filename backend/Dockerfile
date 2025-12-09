@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install minimal build deps for some Python packages
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential gcc libpq-dev \
+    && apt-get install -y --no-install-recommends build-essential gcc libpq-dev curl netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -19,6 +19,10 @@ RUN pip install --upgrade pip \
 # Copy backend code
 COPY backend /app/backend
 COPY backend/manage.py /app/manage.py
+COPY backend/entrypoint.sh /app/entrypoint.sh
+
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
 
 # Ensure the inner Django package (backend/backend) is importable.
 # Set PYTHONPATH to /app/backend so `import backend` resolves to /app/backend/backend

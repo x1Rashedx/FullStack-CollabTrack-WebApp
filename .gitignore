@@ -27,5 +27,7 @@ dist-ssr
 *.sqlite3
 __pycache__
 migrations
-media
+backend/database/media/avatars/*
+backend/database/media/attachments/*
+backend/database/db.sqlite3
 firebase_adminsdk.json

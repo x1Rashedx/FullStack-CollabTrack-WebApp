@@ -117,8 +117,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, projects, isDark
         // Compress the image before setting it
         file = await compressImage(file);
         
-        setAvatarFile(file);
         setFormState(prev => ({ ...prev, avatarUrl: croppedUrl }));
+        setAvatarFile(file);
         setIsDirty(true);
         setUploadedImage(null);
     };

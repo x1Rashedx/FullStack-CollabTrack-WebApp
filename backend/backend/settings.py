@@ -39,14 +39,17 @@ DEBUG = os.getenv("DEBUG") == "True"
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    os.getenv("BACKEND_URL").replace("https://","").replace("http://",""),
+    "backend",  # Docker service name
+    os.getenv("BACKEND_URL", "").replace("https://","").replace("http://",""),
 ]
 
 # Allow frontend requests (temporarily)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",  # React/Vite dev server
-    os.getenv("FRONTEND_URL"),
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    os.getenv("FRONTEND_URL", "http://localhost:5173"),
 ]
 
 AUTH_USER_MODEL = "api.User"
@@ -119,7 +122,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'database/db.sqlite3',
     }
 }
 
@@ -161,8 +164,8 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/database/media/'
+MEDIA_ROOT = BASE_DIR / 'database/media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

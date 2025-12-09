@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { User } from '@/types';
 import { API_URL } from '@/utils/constants';
 
@@ -19,19 +19,23 @@ const getInitials = (name: string = '') => {
 
 const Avatar: React.FC<AvatarProps> = ({ user, className = 'h-8 w-8', title }) => {
     const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [user]);
     
     if (!user) {
         return <div className={`${className} rounded-full bg-gray-300 dark:bg-gray-600`} />;
     }
     
     const finalTitle = title || user.name || 'User';
-console.log("Avatar URL:", user.avatarUrl);
+    
     if (user.avatarUrl && !imageError) {
         
         if (user.avatarUrl.includes('avatars/')) {
             return (
                 <img
-                    src={`${API_URL}/media/${user.avatarUrl}`}
+                    src={`${API_URL}/database/media/${user.avatarUrl}`}
                     alt={user.name || 'User avatar'}
                     title={finalTitle}
                     className={`${className} rounded-full object-cover`}

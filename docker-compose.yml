@@ -1,32 +1,108 @@
 version: '3.8'
 
 services:
+  # Redis for Celery broker
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: collabtrack_redis
     ports:
       - "6379:6379"
     volumes:
       - redisdata:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-  celery:
+  # PostgreSQL database (optional - using SQLite by default)
+  # Uncomment if you want to use PostgreSQL
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: collabtrack_db
+  #   environment:
+  #     POSTGRES_DB: collabtrack
+  #     POSTGRES_USER: collabtrack
+  #     POSTGRES_PASSWORD: collabtrack_password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   restart: unless-stopped
+
+  # Django backend
+  backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: collabtrack_celery
+    container_name: collabtrack_backend
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=backend.settings
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
     volumes:
       - ./backend:/app/backend
-    # Use explicit app path to ensure Celery finds the Celery instance
+      - ./backend/manage.py:/app/manage.py
+    command: sh /app/entrypoint.sh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Celery worker
+  celery:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: collabtrack_celery
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=backend.settings
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/backend
+    env_file:
+    - ./backend/.env
+    volumes:
+      - ./backend:/app/backend
     command: celery -A backend.celery:app worker -l info --concurrency=1
-    restart: on-failure
+    restart: unless-stopped
+
+  # React frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: collabtrack_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file:
+      - ./frontend/.env.local
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: unless-stopped
 
 volumes:
   redisdata:
+  # pgdata:  # Uncomment if using PostgreSQL
+
