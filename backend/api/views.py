@@ -13,17 +13,21 @@ import uuid
 
 
 from .models import (
-    Team, TeamMember, Project, Column, Task, Attachment, Comment, ChatMessage, DirectMessage
+    Team, TeamMember, Project, Column, Task, Attachment, Comment, ChatMessage, DirectMessage,
+    PushToken, Notification
 )
 from .serializers import (
     UserSerializer, RegisterSerializer, TeamSerializer, NestedUserSerializer, ProjectSerializer,
     ColumnSerializer, TaskSerializer, AttachmentSerializer,
-    CommentSerializer, ChatMessageSerializer, DirectMessageSerializer
+    CommentSerializer, ChatMessageSerializer, DirectMessageSerializer,
+    PushTokenSerializer, NotificationSerializer
 )
 from .permissions import IsTeamAdmin
 from rest_framework.permissions import IsAuthenticated
 
 User = get_user_model()
+
+from . import notifications as notifier
 
 
 def _delete_storage_file_by_url(url):
@@ -121,6 +125,19 @@ class TeamViewSet(viewsets.ModelViewSet):
         if uid not in team.join_requests:
             team.join_requests.append(uid)
             team.save()
+            # Notify team admins about join request
+            try:
+                admins = [m.user for m in team.team_members.filter(role='admin')]
+                for admin in admins:
+                    notifier.enqueue_notification(
+                        user=admin,
+                        actor=request.user,
+                        verb='join_request',
+                        data={'teamId': str(team.id), 'requesterId': str(request.user.id)},
+                        channels=['push', 'email']
+                    )
+            except Exception:
+                pass
         return Response({"message": "join request submitted", "name": team.name})
 
     @action(detail=True, methods=["post"], url_path=r"requests/(?P<user_id>[^/.]+)", permission_classes=[IsAuthenticated, IsTeamAdmin])
@@ -139,6 +156,17 @@ class TeamViewSet(viewsets.ModelViewSet):
             if user_id in team.join_requests:
                 team.join_requests.remove(user_id)
                 team.save()
+            # Notify the approved user
+            try:
+                notifier.enqueue_notification(
+                    user=user,
+                    actor=request.user,
+                    verb='join_approved',
+                    data={'teamId': str(team.id)},
+                    channels=['push', 'email', 'sms'] if user.phone else ['push', 'email']
+                )
+            except Exception:
+                pass
             return Response({"message": "approved", "team": TeamSerializer(team).data})
         else:
             if user_id in team.join_requests:
@@ -179,6 +207,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         # Serialize the team
         team_data = TeamSerializer(project.team).data
+
+        # Notify team members about new project
+        try:
+            for member in project.team.team_members.all():
+                notifier.enqueue_notification(
+                    user=member.user,
+                    actor=request.user,
+                    verb='created_project',
+                    data={'projectId': str(project.id), 'projectName': project.name},
+                    channels=['push', 'email']
+                )
+        except Exception:
+            pass
 
         return Response(
             {"newProject": project_data, "updatedTeam": team_data},
@@ -349,6 +390,18 @@ class TaskViewSet(viewsets.ModelViewSet):
                 col = get_object_or_404(Column, id=column_id, project=task.project)
                 col.task_ids.append(str(task.id))
                 col.save()
+            # Notify assignees of new task assignment
+            try:
+                for assignee in task.assignees.all():
+                    notifier.enqueue_notification(
+                        user=assignee,
+                        actor=request.user,
+                        verb='task_assigned',
+                        data={'taskId': str(task.id), 'taskTitle': task.title, 'projectId': str(task.project.id), 'projectName': task.project.name},
+                        channels=['push', 'email']
+                    )
+            except Exception:
+                pass
             return Response(self.get_serializer(task).data, status=status.HTTP_201_CREATED)
 
 
@@ -550,6 +603,52 @@ class DirectMessageViewSet(viewsets.ModelViewSet):
         serializer.save(sender=self.request.user)
 
 
+class PushTokenViewSet(viewsets.ModelViewSet):
+    queryset = PushToken.objects.all()
+    serializer_class = PushTokenSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        # Create or update a push token for the current user
+        token = request.data.get('token')
+        platform = request.data.get('platform')
+        if not token:
+            return Response({'error': 'token required'}, status=400)
+        obj, created = PushToken.objects.get_or_create(token=token, defaults={'user': request.user, 'platform': platform})
+        if not created:
+            # ensure the token belongs to this user
+            obj.user = request.user
+            obj.platform = platform
+            obj.save()
+        return Response(PushTokenSerializer(obj).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='unregister')
+    def unregister(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'error': 'token required'}, status=400)
+        try:
+            PushToken.objects.filter(token=token, user=request.user).delete()
+        except Exception:
+            pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # return notifications for the current user by default
+        qs = Notification.objects.filter(user=self.request.user)
+        return qs
+
+    def partial_update(self, request, *args, **kwargs):
+        # allow marking as read via PATCH { read: true }
+        return super().partial_update(request, *args, **kwargs)
+
+
 # Bundled data endpoint
 from rest_framework.views import APIView
 
@@ -560,11 +659,13 @@ class AllDataView(APIView):
         teams = TeamSerializer(Team.objects.all(), many=True).data
         projects = ProjectSerializer(Project.objects.all(), many=True).data
         direct_messages = DirectMessageSerializer(DirectMessage.objects.all(), many=True).data
+        notifications = NotificationSerializer(Notification.objects.all(), many=True).data
 
         # format like your frontend expects
         return Response({
             "users": {u["id"]: u for u in users},
             "teams": {t["id"]: t for t in teams},
             "projects": {p["id"]: p for p in projects},
-            "directMessages": {dm["id"]: dm for dm in direct_messages}
+            "directMessages": {dm["id"]: dm for dm in direct_messages},
+            "notifications": {n["id"]: n for n in notifications}
         })

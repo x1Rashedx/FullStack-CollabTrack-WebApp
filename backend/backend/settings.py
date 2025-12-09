@@ -168,3 +168,19 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery / background task settings
+# Set `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` via environment variables.
+# Default to local Redis if not provided.
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+
+# Notification provider configuration (set these in your environment in production)
+# Path to Firebase service account JSON file, or JSON string
+FIREBASE_SERVICE_ACCOUNT_JSON_PATH = str(BASE_DIR) + "/" + str(os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON'))
+# SendGrid / Twilio keys
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_FROM_NUMBER = os.getenv('TWILIO_FROM_NUMBER')
+

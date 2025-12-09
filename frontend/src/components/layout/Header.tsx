@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sun, Moon, Search, Bell, Briefcase, Users, LogOut, User as UserIcon } from 'lucide-react';
 import type { Project, User, Task, Team } from '@/types';
 import Avatar from '@components/common/Avatar';
+import { notificationService } from '@/services/notification.service';
+import { registerForPush } from '@/services/fcm';
 
 interface HeaderProps {
     currentProject: Project | null;
@@ -9,7 +11,7 @@ interface HeaderProps {
     currentUser: User;
     isDarkMode: boolean;
     onToggleTheme: () => void;
-    onNavigate: (page: 'dashboard' | 'teams' | 'settings' | 'messages') => void;
+    onNavigate: (page: 'dashboard' | 'teams' | 'settings' | 'messages' | 'notifications') => void;
     onLogout: () => void;
     projects: Project[];
     allUsers: User[];
@@ -33,7 +35,8 @@ const Header: React.FC<HeaderProps> = ({
     const [isSearchFocused, setSearchFocused] = useState(false);
     
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
-    const [hasUnread, setHasUnread] = useState(true);
+    const [hasUnread, setHasUnread] = useState(false);
+    const [notifications, setNotifications] = useState<any[]>([]);
     const [isProfileOpen, setProfileOpen] = useState(false);
 
     const searchRef = useRef<HTMLDivElement>(null);
@@ -98,6 +101,28 @@ const Header: React.FC<HeaderProps> = ({
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const data: any = await notificationService.list();
+                if (!mounted) return;
+                setNotifications(Array.isArray(data) ? data : []);
+                const unread = (data || []).filter((n: any) => !n.read).length;
+                setHasUnread(unread > 0);
+                // Try to register for push notifications (best-effort)
+                try {
+                    await registerForPush();
+                } catch (e) {
+                    // ignore errors from push registration
+                }
+            } catch (e) {
+                // silently ignore
+            }
+        })();
+        return () => { mounted = false; };
     }, []);
 
     const handleSelectTask = (projectId: string, taskId: string) => {
@@ -231,22 +256,13 @@ const Header: React.FC<HeaderProps> = ({
                 </button>
                 
                 <div className="relative" ref={notificationsRef}>
-                    <button onClick={() => { setNotificationsOpen(!isNotificationsOpen); setHasUnread(false); }} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 relative">
+                    <button 
+                        onClick={() => onNavigate('notifications')} 
+                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 relative"
+                    >
                         <Bell size={20} />
                         {hasUnread && <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>}
                     </button>
-                    {isNotificationsOpen && (
-                         <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700">
-                             <div className="p-3 border-b dark:border-gray-700">
-                                <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Notifications</h3>
-                             </div>
-                             <ul className="py-1 max-h-72 overflow-y-auto">
-                                <li className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300">Maria Garcia commented on 'Design the new logo'.</li>
-                                <li className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300">New task assigned: 'Write API documentation'.</li>
-                                <li className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300">Project 'Website Redesign' is due in 3 days.</li>
-                             </ul>
-                         </div>
-                    )}
                 </div>
 
                 <div className="relative" ref={profileRef}>

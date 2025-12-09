@@ -82,7 +82,7 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
                     <div className="flex-shrink-0 mt-0.5">
                         <Avatar user={lastComment.author} className="h-5 w-5" />
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                    <p className="text-xs text-gray-600 break-all dark:text-gray-400 line-clamp-2">
                         {lastComment.content}
                     </p>
                 </div>

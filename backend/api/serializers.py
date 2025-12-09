@@ -5,6 +5,7 @@ from .models import (
     Attachment, Comment, Task, Column, ChatMessage,
     TeamMember, Team, Project, DirectMessage
 )
+from .models import PushToken, Notification
 from .utils import compress_base64_image, rename_file
 
 User = get_user_model()
@@ -239,3 +240,17 @@ class DirectMessageSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return super().create(validated_data)
+
+
+class PushTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PushToken
+        fields = ["id", "user", "token", "platform", "created_at"]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    actor = NestedUserSerializer(read_only=True)
+    class Meta:
+        model = Notification
+        fields = ["id", "user", "actor", "verb", "data", "channel", "read", "created_at"]
+        read_only_fields = ["id", "created_at"]

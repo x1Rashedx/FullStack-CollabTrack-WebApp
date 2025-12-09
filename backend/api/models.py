@@ -147,3 +147,33 @@ class DirectMessage(models.Model):
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages")
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+
+class PushToken(models.Model):
+    """Stores device push tokens (FCM) for users."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_tokens')
+    token = models.CharField(max_length=512, unique=True)
+    platform = models.CharField(max_length=50, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Notification(models.Model):
+    """Represents an in-app/outbound notification to a user."""
+    CHANNEL_CHOICES = [
+        ("push", "push"),
+        ("email", "email"),
+        ("sms", "sms"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    verb = models.CharField(max_length=100)  # e.g. 'assigned_task', 'task_due'
+    data = models.JSONField(default=dict, blank=True)  # arbitrary metadata: {taskId, projectId, message}
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default='push')
+    read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

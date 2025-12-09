@@ -43,10 +43,11 @@ export const userService = {
     },
 
     fetchAllUserData: (): Promise<{
-        projects: { [key: string]: Project };
-        teams: { [key: string]: Team };
-        directMessages: { [key: string]: any };
         users: { [key: string]: any };
+        teams: { [key: string]: Team };
+        projects: { [key: string]: Project };
+        directMessages: { [key: string]: any };
+        notifications: any[];
     }> => {
         return apiRequest('/data/');
     },

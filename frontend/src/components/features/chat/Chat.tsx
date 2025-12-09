@@ -180,6 +180,7 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                                     )}
 
                                     <div className={`flex group ${isCurrentUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+                                        {!isCurrentUser && (<Avatar user={msg.author} className="h-8 w-8 flex-shrink-0 mr-2" />)}
                                         <div className={`flex flex-col max-w-[95%] sm:max-w-[90%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
                                             {/* Reply snippet */}
                                             {parentMessage && (
@@ -198,12 +199,15 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                                             {/* Message Bubble */}
                                             <div className="relative">
                                                 <div 
-                                                    className={`px-4 py-2.5 shadow-sm text-sm relative ${
+                                                    className={`px-3 py-0.5 pt-2 shadow-sm text-sm relative ${
                                                         isCurrentUser 
                                                             ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-2xl rounded-tr-none' 
-                                                            : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-none'
+                                                            : 'pl-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-none'
                                                     }`}
                                                 >
+                                                    {!isCurrentUser && (msg.author.name && (
+                                                        <span className="block text-xs font-semibold mb-0.5 text-gray-600 dark:text-gray-300">{msg.author.name}</span>
+                                                    ))}
                                                     <p className="whitespace-pre-wrap break-all leading-relaxed">{msg.content}</p>
                                                     
                                                     {/* Attachments */}

@@ -26,4 +26,6 @@ dist-ssr
 
 *.sqlite3
 __pycache__
+migrations
 media
+firebase_adminsdk.json

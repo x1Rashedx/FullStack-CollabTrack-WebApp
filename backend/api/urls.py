@@ -3,6 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, TeamViewSet, ProjectViewSet, ColumnViewSet, TaskViewSet,
     AttachmentViewSet, CommentViewSet, ChatMessageViewSet, DirectMessageViewSet, AllDataView, 
+    # new
+    NotificationViewSet, PushTokenViewSet,
 )
 
 router = DefaultRouter()
@@ -15,6 +17,8 @@ router.register(r"attachments", AttachmentViewSet)
 router.register(r"comments", CommentViewSet)
 router.register(r"chatmessages", ChatMessageViewSet)
 router.register(r"messages", DirectMessageViewSet)
+router.register(r"notifications", NotificationViewSet)
+router.register(r"push-tokens", PushTokenViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),

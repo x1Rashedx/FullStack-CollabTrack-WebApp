@@ -14,6 +14,7 @@ import ProfilePage from '@pages/ProfilePage';
 import LandingPage from '@pages/LandingPage';
 import MessagesPage from '@pages/MessagesPage';
 import SearchPage from '@pages/SearchPage';
+import NotificationsPage from '@pages/NotificationsPage';
 
 // Services & Types
 import { authService, projectService, taskService, columnService, teamService, messageService, userService, fetchVersion } from '@services/index';
@@ -38,11 +39,12 @@ function App() {
     const [users, setUsers] = useState<{ [key: string]: User }>({});
     const [folders, setFolders] = useState<{ [key: string]: Folder }>({});
     const [directMessages, setDirectMessages] = useState<{ [key: string]: DirectMessage }>({});
+    const [notifications, setNotifications] = useState<any[]>([]);
     
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [currentPage, setCurrentPage] = useState<'dashboard' | 'project' | 'teams' | 'settings' | 'messages' | 'search'>('dashboard');
+    const [currentPage, setCurrentPage] = useState<'dashboard' | 'project' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications'>('dashboard');
     const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
     const [taskToOpen, setTaskToOpen] = useState<string | null>(null);
     const [currentConversationPartnerId, setCurrentConversationPartnerId] = useState<string | null>(null);
@@ -105,6 +107,9 @@ function App() {
                 setTeams(data.teams);
                 setDirectMessages(data.directMessages);
                 setUsers(data.users);
+                if (data.notifications) {
+                    setNotifications(data.notifications);
+                }
                 console.log("Periodic data fetch complete.");
             } catch (err) {
                 console.error("Failed to fetch data:", err);
@@ -277,7 +282,7 @@ function App() {
             .catch(() => addToast('Failed to create project.', 'error'));
     };
 
-    const handleNavigate = (page: 'dashboard' | 'teams' | 'settings' | 'messages' | 'search') => {
+    const handleNavigate = (page: 'dashboard' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications') => {
         setCurrentPage(page);
         if (page === 'dashboard') {
             //setCurrentProjectId(null);
@@ -763,6 +768,7 @@ function App() {
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
                     {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} allUsers={users} allTeams={teams} />}
                     {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onSelectTask={handleSelectTaskFromSearch} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
+                    {currentPage === 'notifications' && <NotificationsPage currentUser={currentUser} allUsers={users} notifications={Object.values(notifications)} onNotificationsUpdate={setNotifications} />}
                 </main>
             </div>
         </div>

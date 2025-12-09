@@ -459,16 +459,16 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                     {editableTask.comments.map(comment => {
                                         const isCurrentUserComment = comment.author.id === currentUser.id;
                                         return (
-                                            <div key={comment.id} className={`flex gap-3 group ${isCurrentUserComment ? 'flex-row-reverse' : ''}`}>
-                                                <Avatar user={comment.author} className="h-8 w-8 mt-1 flex-shrink-0" />
+                                            <div key={comment.id} className={`flex gap-2 group ${isCurrentUserComment ? 'flex-row-reverse' : ''}`}>
+                                                <Avatar user={comment.author} className="h-8 w-8 flex-shrink-0" />
                                                 <div className="flex-2">
-                                                    <div className={`p-3 rounded-lg ${isCurrentUserComment ? 'bg-brand-500 text-white rounded-br-none' : 'bg-gray-50 dark:bg-gray-700/40 rounded-tl-none border border-gray-100 dark:border-gray-700'}`}>
+                                                    <div className={`mt-2 p-3 rounded-lg ${isCurrentUserComment ? 'bg-brand-500 text-white rounded-tr-none' : 'bg-gray-50 dark:bg-gray-700/40 rounded-tl-none border border-gray-100 dark:border-gray-700'}`}>
                                                         <div className={`flex gap-2 items-baseline mb-1 ${isCurrentUserComment ? 'justify-end' : 'justify-start'}`}>
                                                             {!isCurrentUserComment && <span className="text-[10px] font-semibold text-xs text-gray-900 dark:text-gray-100">{comment.author.name}</span>}
                                                             {isCurrentUserComment && <span className="text-[10px] font-semibold text-xs text-primary-100">{comment.author.name}</span>}
                                                             <span className={`text-[10px] ${isCurrentUserComment ? 'text-primary-100/70' : 'text-gray-400'}`}>{new Date(comment.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
-                                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                                        <p className="text-sm break-all leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                                                     </div>
                                                 </div>
                                             </div>

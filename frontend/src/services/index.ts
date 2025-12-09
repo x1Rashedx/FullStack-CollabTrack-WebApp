@@ -9,4 +9,5 @@ export { taskService } from './task.service';
 export { columnService } from './column.service';
 export { teamService } from './team.service';
 export { messageService } from './message.service';
+export { notificationService } from './notification.service';
 export { getAuthToken, setAuthToken, clearAuthToken, fetchVersion } from './http';
