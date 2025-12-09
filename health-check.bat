@@ -32,17 +32,17 @@ echo ---------------
 REM Check Frontend
 curl -s http://localhost:5173 >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ✓ Frontend (http://localhost:5173): reachable
+    echo ✓ Frontend "http://localhost:5173": reachable
 ) else (
-    echo ✗ Frontend (http://localhost:5173): unreachable
+    echo ✗ Frontend "http://localhost:5173": unreachable
 )
 
 REM Check Backend
 curl -s http://localhost:8000/api/ >nul 2>&1
 if %errorlevel% equ 0 (
-    echo ✓ Backend (http://localhost:8000/api): reachable
+    echo ✓ Backend "http://localhost:8000/api": reachable
 ) else (
-    echo ✗ Backend (http://localhost:8000/api): unreachable
+    echo ✗ Backend "http://localhost:8000/api": unreachable
 )
 
 REM Check Redis
