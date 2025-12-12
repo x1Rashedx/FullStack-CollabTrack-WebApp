@@ -13,12 +13,12 @@ import uuid
 
 
 from .models import (
-    Team, TeamMember, Project, Column, Task, Attachment, Comment, ChatMessage, DirectMessage,
+    Team, TeamMember, Project, Column, Task, Subtask, Attachment, Comment, ChatMessage, DirectMessage,
     PushToken, Notification
 )
 from .serializers import (
     UserSerializer, RegisterSerializer, TeamSerializer, NestedUserSerializer, ProjectSerializer,
-    ColumnSerializer, TaskSerializer, AttachmentSerializer,
+    ColumnSerializer, TaskSerializer, SubtaskSerializer, AttachmentSerializer,
     CommentSerializer, ChatMessageSerializer, DirectMessageSerializer,
     PushTokenSerializer, NotificationSerializer
 )
@@ -133,7 +133,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                         user=admin,
                         actor=request.user,
                         verb='join_request',
-                        data={'teamId': str(team.id), 'requesterId': str(request.user.id)},
+                        data={'teamId': str(team.id), 'teamName': team.name},
                         channels=['push', 'email']
                     )
             except Exception:
@@ -172,6 +172,17 @@ class TeamViewSet(viewsets.ModelViewSet):
             if user_id in team.join_requests:
                 team.join_requests.remove(user_id)
                 team.save()
+            # Notify the denied user
+            try:
+                notifier.enqueue_notification(
+                    user=user,
+                    actor=request.user,
+                    verb='join_denied',
+                    data={'teamId': str(team.id)},
+                    channels=['push', 'email', 'sms'] if user.phone else ['push', 'email']
+                )
+            except Exception:
+                pass
             return Response({"message": "denied", "team": TeamSerializer(team).data})
 
 
@@ -215,7 +226,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     user=member.user,
                     actor=request.user,
                     verb='created_project',
-                    data={'projectId': str(project.id), 'projectName': project.name},
+                    data={'projectId': str(project.id), 'projectName': project.name, 'teamId': str(project.team.id), 'teamName': project.team.name},
                     channels=['push', 'email']
                 )
         except Exception:
@@ -564,6 +575,21 @@ class TaskViewSet(viewsets.ModelViewSet):
             # finally delete the task itself
             task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+class SubtaskViewSet(viewsets.ModelViewSet):
+    serializer_class = SubtaskSerializer
+    queryset = Subtask.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_task(self):
+        # assumes nested URL: /tasks/<task_id>/subtasks/
+        task_id = self.kwargs.get("task_pk")  # DRF nested routers use <lookup>_field
+        return get_object_or_404(Task, id=task_id)
+    
+    def perform_create(self, serializer):
+        task = self.get_task()
+        serializer.save(task=task)
 
 
 class AttachmentViewSet(viewsets.ModelViewSet):

@@ -85,6 +85,10 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
         if (verb === 'task_assigned') {
             return `You've been assigned to a task by ${actorName}`;
         }
+
+        if (verb === 'join_request') {
+            return `${actorName} requested to join your team`;
+        }
         
         // Default: actor + verb
         return `${actorName} ${verb.replace(/_/g, ' ')}`;
@@ -107,12 +111,26 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({
             }
             return `${actorName} assigned you to the task <u><b>${taskTitle}</b></u>`;
         }
+
+        if (notification.verb === 'created_project') {
+            const actorName = notification.actor ? (notification.actor.name || 'Someone') : 'Someone';
+            const projectName = data.projectName || 'project';
+            const teamName = data.teamName || '';
+            
+            if (teamName) {
+                return `${actorName} created a project <u><b>${projectName}</b></u> in <u><b>${teamName}</b></u>`;
+            }
+            return `${actorName} created a project <u><b>${projectName}</b></u>`;
+        }
+
+        if (notification.verb === 'join_request') {
+            const actorName = notification.actor ? (notification.actor.name || 'Someone') : 'Someone';
+            const teamName = data.teamName || 'your team';
+            return `${actorName} has requested to join <u><b>${teamName}</b></u>`;
+        }
         
         // Fallback
-        const parts = [];
-        if (data.taskTitle) parts.push(data.taskTitle);
-        if (data.projectName) parts.push(`in ${data.projectName}`);
-        return parts.length > 0 ? parts.join(' ') : JSON.stringify(data);
+        return JSON.stringify(data);
     };
 
     const formatTimestamp = (timestamp: string) => {

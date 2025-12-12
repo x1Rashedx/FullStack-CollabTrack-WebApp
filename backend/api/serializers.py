@@ -1,8 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
+from django.contrib.auth.password_validation import validate_password
 from .models import (
-    Attachment, Comment, Task, Column, ChatMessage,
+    Attachment, Comment, Task, Subtask, Column, ChatMessage,
     TeamMember, Team, Project, DirectMessage
 )
 from .models import PushToken, Notification
@@ -61,11 +62,16 @@ class UserSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, min_length=6)
+    password = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
         fields = ["id", "name", "email", "password"]
+
+    def validate_password(self, value):
+        # THIS runs all validators in settings.py
+        validate_password(value)
+        return value
 
     def create(self, validated_data):
         # Use custom manager to create user with hashed password
@@ -93,6 +99,13 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ["id", "author", "author_id", "content", "timestamp"]
 
 
+class SubtaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subtask
+        fields = ["id", "title", "completed"]
+        read_only_fields = ["id"]
+
+
 class TaskSerializer(serializers.ModelSerializer):
     assignees = NestedUserSerializer(many=True, read_only=True)
     assigneeIds = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True, source="assignees", required=False)
@@ -102,6 +115,8 @@ class TaskSerializer(serializers.ModelSerializer):
 
     comments = serializers.SerializerMethodField()
     commentIds = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), many=True, write_only=True, source="comments", required=False)
+
+    subtasks = SubtaskSerializer(many=True, read_only=True)
 
     dueDate = serializers.DateTimeField(source="due_date", allow_null=True, required=False)
 
@@ -119,7 +134,7 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "description", "assignees", "assigneeIds",
             "dueDate", "priority", "tags", "attachments", "attachmentIds",
-            "comments", "commentIds", "projectId", "weight", "completed",
+            "comments", "commentIds", "subtasks", "projectId", "weight", "completed",
             "createdAt", "updatedAt"
         ]
         read_only_fields = ["id", "createdAt", "updatedAt"]

@@ -57,17 +57,23 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [replyingToMessage, setReplyingToMessage] = useState<DirectMessage | null>(null);
     const [isUserListCollapsed, setUserListCollapsed] = useState(false);
-    const [sidebarWidth, setSidebarWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Email Assistant Modal State
-    const [isEmailAssistantOpen, setIsEmailAssistantOpen] = useState(false);
     // New Chat Modal State
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+
+    const [sidebarWidth, setSidebarWidth] = useState(() => {
+        const saved = localStorage.getItem("messagesSidebarWidth");
+        return saved ? parseInt(saved, 10) : 320;
+    });
+
+    useEffect(() => {
+        localStorage.setItem("messagesSidebarWidth", sidebarWidth.toString());
+    }, [sidebarWidth]);
 
 
     // --- Derived Data: Sorted Contacts with Last Message ---
@@ -319,13 +325,6 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                     <Video size={18} />
                                 </button>
                                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-                                <button
-                                    onClick={() => setIsEmailAssistantOpen(true)}
-                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-900 transition-colors border border-brand-100 dark:border-brand-800"
-                                >
-                                    <Mail size={14} />
-                                    Email Assistant
-                                </button>
                                 <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors">
                                     <Info size={18} />
                                 </button>

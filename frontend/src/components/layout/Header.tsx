@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sun, Moon, Search, Bell, Briefcase, Users, LogOut, User as UserIcon } from 'lucide-react';
 import type { Project, User, Task, Team } from '@/types';
 import Avatar from '@components/common/Avatar';
-import { notificationService } from '@/services/notification.service';
-import { registerForPush } from '@/services/fcm';
 
 interface HeaderProps {
     currentProject: Project | null;

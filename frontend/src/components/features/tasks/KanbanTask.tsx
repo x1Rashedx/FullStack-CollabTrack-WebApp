@@ -40,6 +40,7 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
     const subtasks = task.subtasks || [];
     const completedSubtasks = subtasks.filter(st => st.completed).length;
     const totalSubtasks = subtasks.length;
+    const subtaskProgress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
 
     return (
         <div 
@@ -69,6 +70,16 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
                 <p className={`mt-2 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 ${task.completed ? 'line-through opacity-75' : ''}`}>{task.description}</p>
             )}
 
+            {/* Subtask Progress Bar */}
+            {totalSubtasks > 0 && (
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-3 overflow-hidden">
+                    <div 
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${subtaskProgress === 100 ? 'bg-success-status-500' : 'bg-primary-500'}`} 
+                        style={{ width: `${subtaskProgress}%` }}
+                    ></div>
+                </div>
+            )}
+
             {task.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                     {task.tags.map(tag => (
@@ -76,7 +87,7 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
                     ))}
                 </div>
             )}
-            
+
             {lastComment && (
                 <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700 flex items-start space-x-2">
                     <div className="flex-shrink-0 mt-0.5">

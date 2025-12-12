@@ -17,6 +17,9 @@ interface TaskModalProps {
     onCreateComment: (taskId: string, content: string) => void;
     onUploadAttachment: (taskId: string, file: File) => Promise<Attachment>;
     onDeleteAttachment: (attachmentId: string) => void;
+    onCreateSubtask: (taskId: string, title: string) => Promise<void>;
+    onUpdateSubtask: (taskId: string, subtaskId: string, data: Partial<Subtask>) => Promise<void>;
+    onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void>;
 }
 
 const priorityColors = {
@@ -25,7 +28,7 @@ const priorityColors = {
     high: 'bg-error-status-100 text-error-status-800 dark:bg-error-status-900/50 dark:text-error-status-300 border-error-status-200 dark:border-error-status-800',
 };
 
-const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDeleteTask, onCreateComment, onUploadAttachment, onDeleteAttachment, projectMembers, currentUser, isTeamAdmin }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDeleteTask, onCreateComment, onUploadAttachment, onDeleteAttachment, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, projectMembers, currentUser, isTeamAdmin }) => {
     const [editableTask, setEditableTask] = useState<Task>({ ...task, subtasks: task.subtasks || [] });
     const [newComment, setNewComment] = useState('');
     const [newTag, setNewTag] = useState('');
@@ -69,10 +72,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
     
     // Scroll comments to bottom when added
     useEffect(() => {
-        if (editableTask.comments.length > 0) {
+        if (task.comments.length > 0) {
             commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [editableTask.comments]);
+    }, [task.comments]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -114,6 +117,36 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
 
                     // Remove this file from the pending queue as soon as it's uploaded
                     setPendingFiles(prev => prev.filter(p => !(p.name === f.name && p.size === f.size && p.lastModified === f.lastModified)));
+                }
+            }
+
+            // Create a lookup map for existing subtasks
+            const taskSubtasksMap = task.subtasks.reduce<Record<string, Subtask>>((acc, st) => {
+                acc[st.id] = st;
+                return acc;
+            }, {});
+
+            for (const subtask of editableTask.subtasks) {
+                const existing = taskSubtasksMap[subtask.id];
+
+                if (!existing) {
+                    // New subtask
+                    await onCreateSubtask(task.id, subtask.title);
+                    continue;
+                }
+
+                // Existing subtask - update if changed
+                if (subtask.title !== existing.title || subtask.completed !== existing.completed) {
+                    await onUpdateSubtask(task.id, subtask.id, { title: subtask.title, completed: subtask.completed });
+                }
+            }
+
+            const editableSubtaskIds = new Set(editableTask.subtasks.map(st => st.id));
+
+            for (const subtask of task.subtasks) {
+                if (!editableSubtaskIds.has(subtask.id)) {
+                    // Subtask existed before but was removed in editableTask
+                    await onDeleteSubtask(task.id, subtask.id);
                 }
             }
 
@@ -208,26 +241,31 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
 
     const handleAddSubtask = () => {
         if (!newSubtaskTitle.trim()) return;
-        const newSubtask: Subtask = {
-            id: `st-${Date.now()}`,
-            title: newSubtaskTitle.trim(),
-            completed: false
-        };
-        const updatedSubtasks = [...editableTask.subtasks, newSubtask];
-        handleUpdate('subtasks', updatedSubtasks);
+        setEditableTask(prev => ({
+            ...prev,
+            subtasks: [...prev.subtasks, { id: new Date().toISOString(), title: newSubtaskTitle.trim(), completed: false }]
+        }));
         setNewSubtaskTitle('');
+        setHasUnsavedChanges(true);
+        setIsAddingSubtask(true);
     };
 
     const toggleSubtask = (subtaskId: string) => {
-        const updatedSubtasks = editableTask.subtasks.map(st => 
+        setEditableTask(prev => ({
+        ...prev,
+        subtasks: prev.subtasks.map(st =>
             st.id === subtaskId ? { ...st, completed: !st.completed } : st
-        );
-        handleUpdate('subtasks', updatedSubtasks);
+        )
+        }));
+        setHasUnsavedChanges(true);
     };
 
     const removeSubtask = (subtaskId: string) => {
-        const updatedSubtasks = editableTask.subtasks.filter(st => st.id !== subtaskId);
-        handleUpdate('subtasks', updatedSubtasks);
+        setEditableTask(prev => ({
+            ...prev,
+            subtasks: prev.subtasks.filter(st => st.id !== subtaskId)
+        }));
+        setHasUnsavedChanges(true);
     };
 
     const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDraggingOver(true); };
@@ -246,8 +284,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
     const progress = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col relative animate-fade-in overflow-hidden border border-gray-200 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col relative animate-fade-in overflow-hidden border border-gray-200 dark:border-gray-700">
                 
                 {/* Header */}
                 <header className="flex justify-between items-start p-5 border-b dark:border-gray-700 bg-white dark:bg-gray-800 z-10 flex-shrink-0">
@@ -279,7 +317,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                     </div>
                     
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        {hasUnsavedChanges && (
+                        {hasUnsavedChanges && !isSaving && (
                             <button 
                                 onClick={handleSaveChanges}
                                 className="flex items-center px-3 py-1.5 text-xs font-bold text-white bg-primary-600 rounded-md hover:bg-primary-700 shadow-sm animate-in fade-in duration-200"
@@ -287,6 +325,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                 <Save size={14} className="mr-1.5" />
                                 Save
                             </button>
+                        )}
+                        {isSaving && (
+                            <div className="flex items-center px-3 py-1.5 text-xs font-bold text-white bg-primary-600 rounded-md shadow-sm animate-in fade-in duration-200">
+                                <Loader2 size={14} className="mr-1.5 animate-spin" />
+                                Saving...
+                            </div>
                         )}
                          {isTeamAdmin && (
                              <button onClick={handleDeleteClick} className="p-2 rounded-lg text-gray-400 hover:bg-error-status-50 hover:text-error-status-600 dark:hover:bg-error-status-900/30 transition-colors">
@@ -444,11 +488,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                     <h3 className="text-sm font-bold text-gray-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
                                         <MessageSquare size={16} className="text-gray-400" /> Activity
                                     </h3>
-                                    <span className="text-xs text-gray-400">{editableTask.comments.length} comments</span>
+                                    <span className="text-xs text-gray-400">{task.comments.length} comments</span>
                                 </div>
                                 
                                 <div className="flex-1 overflow-y-auto space-y-4 pr-2 max-h-[400px] custom-scrollbar">
-                                    {editableTask.comments.length === 0 && (
+                                    {task.comments.length === 0 && (
                                         <div className="text-center py-8">
                                             <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400">
                                                 <MessageSquare size={20} />
@@ -456,7 +500,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                             <p className="text-sm text-gray-500 dark:text-gray-400">No activity yet.</p>
                                         </div>
                                     )}
-                                    {editableTask.comments.map(comment => {
+                                    {task.comments.map(comment => {
                                         const isCurrentUserComment = comment.author.id === currentUser.id;
                                         return (
                                             <div key={comment.id} className={`flex gap-2 group ${isCurrentUserComment ? 'flex-row-reverse' : ''}`}>
@@ -481,13 +525,16 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                     <textarea
                                         value={newComment}
                                         onChange={(e) => setNewComment(e.target.value)}
-                                        onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); }}}
+                                        onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(); setNewComment('')}}}
                                         placeholder="Write a comment..."
                                         rows={1}
                                         className="w-full pl-4 pr-12 py-3 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-800 dark:text-gray-200 resize-none shadow-sm"
                                     />
                                     <button 
-                                        onClick={handleAddComment} 
+                                        onClick={() => {
+                                            handleAddComment()
+                                            setNewComment('')
+                                        }} 
                                         disabled={!newComment.trim()}
                                         className="absolute right-2.5 bottom-3.5 p-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105"
                                     >
@@ -536,7 +583,13 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                                 value={st.title}
                                                 onChange={(e) => {
                                                     const updatedSubtasks = editableTask.subtasks.map(s => s.id === st.id ? { ...s, title: e.target.value } : s);
-                                                    handleUpdate('subtasks', updatedSubtasks);
+                                                    setEditableTask(prev => ({ ...prev, subtasks: updatedSubtasks }));
+                                                    setHasUnsavedChanges(true);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        (e.target as HTMLInputElement).blur();
+                                                    }
                                                 }}
                                                 className={`flex-grow bg-transparent text-sm focus:outline-none border-none p-0 focus:ring-0 ${st.completed ? 'line-through text-gray-400 transition-colors' : 'text-gray-800 dark:text-gray-200'}`}
                                             />

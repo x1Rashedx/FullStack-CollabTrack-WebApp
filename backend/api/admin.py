@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    User, Attachment, Comment, Task, Column, ChatMessage,
+    User, Attachment, Comment, Task, Subtask, Column, ChatMessage,
     TeamMember, Team, Project, DirectMessage
 )
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -12,7 +12,7 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ["email", "name"]
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Personal Info", {"fields": ("name", "avatar_url", "phone", "gender")}),
+        ("Personal Info", {"fields": ("name", "avatar", "phone", "gender")}),
         ("Permissions", {"fields": ("is_staff", "is_superuser", "is_active", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login",)}),
     )
@@ -27,6 +27,7 @@ admin.site.register(User, UserAdmin)
 admin.site.register(Attachment)
 admin.site.register(Comment)
 admin.site.register(Task)
+admin.site.register(Subtask)
 admin.site.register(Column)
 admin.site.register(ChatMessage)
 admin.site.register(TeamMember)

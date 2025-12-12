@@ -2,6 +2,8 @@
  * HTTP Client - Base HTTP utility for all API calls
  */
 
+import { add } from "@dnd-kit/utilities";
+
 const API_BASE_URL = import.meta.env.VITE_API_URL + "/api";
 
 let authToken: string | null = null;
@@ -58,10 +60,17 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
         fetchVersion++;
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
         
-        if (response.status === 401 && endpoint !== '/push-tokens/') {
+        if (response.status === 401 && endpoint !== '/push-tokens/' && endpoint !== '/token/') {
             clearAuthToken();
             window.location.reload();
             throw new Error("Session expired. Please log in again.");
+        }
+
+        if (!response.ok && endpoint === '/users/register/') {
+            const errorData = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }))
+            const messages = errorData.password?.join(" ") || errorData.email?.join(" ") || "Unknown error"
+            const capitalized = messages.charAt(0).toUpperCase() + messages.slice(1);
+            throw new Error(capitalized)
         }
         
         if (!response.ok) {

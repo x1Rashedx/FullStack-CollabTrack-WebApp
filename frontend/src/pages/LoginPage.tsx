@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Shield, ArrowLeft, Layout, Mail, Lock, User, Sun, Moon } from 'lucide-react';
-import Spinner from '@components/common/Spinner';
+import { Shield, ArrowLeft, Layout, Mail, Lock, User, Sun, Moon, Loader2 } from 'lucide-react';
 
 interface LoginPageProps {
     onLogin: (email: string, password: string) => Promise<void>;
@@ -149,9 +148,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                             <button 
                                 type="submit" 
                                 disabled={isLoading}
-                                className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:focus:ring-offset-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+                                className="w-full h-12 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:focus:ring-offset-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
                             >
-                                {isLoading ? <Spinner /> : (isLoginView ? 'Sign In' : 'Create Account')}
+                                {isLoading ? <Loader2 size={20} className="mr-1.5 animate-spin" /> : (isLoginView ? 'Sign In' : 'Create Account')}
                             </button>
                         </form>
 

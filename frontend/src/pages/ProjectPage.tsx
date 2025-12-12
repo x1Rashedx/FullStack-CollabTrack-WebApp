@@ -13,7 +13,7 @@ import {
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Columns, Calendar as CalendarIcon, PieChart, List, Info, Filter, ChevronDown, LayoutGrid, Plus } from 'lucide-react';
 
-import type { Project, User, Task, Team, Attachment, Comment } from '@/types';
+import type { Project, User, Task, Team, Attachment, Comment, Subtask } from '@/types';
 import { KanbanBoard, KanbanColumn, KanbanTask, TaskModal, TasksListView } from '@/components/features/tasks';
 import { ConfirmationModal, CreateTaskModal } from '@components/modals';
 import { ProjectStats, ProjectInfo, ProjectFilters } from '@/components/features/projects';
@@ -46,11 +46,14 @@ interface ProjectPageProps {
     onCreateComment: (projectId: string, taskId: string, content: string) => void;
     onUploadTaskAttachment: (projectId: string, taskId: string, file: File) => Promise<Attachment>;
     onDeleteTaskAttachment: (projectId: string, taskId: string, attachmentId: string) => void;
+    onCreateSubtask: (projectId: string, taskId: string, title: string) => Promise<void>;
+    onUpdateSubtask: (projectId: string, taskId: string, subtaskId: string, data: Partial<Subtask>) => Promise<void>;
+    onDeleteSubtask: (projectId: string, taskId: string, subtaskId: string) => Promise<void>;
 
     addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, onUpdateProject, onDeleteProject, onCreateColumn, taskToOpen, onClearTaskToOpen, onUpdateColumn, onMoveColumn, onDeleteColumn, onSendMessage, onCreateTask, onUpdateTask, onDeleteTask, onMoveTask, onCreateComment, onUploadTaskAttachment, onDeleteTaskAttachment, addToast }) => {
+const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, onUpdateProject, onDeleteProject, onCreateColumn, taskToOpen, onClearTaskToOpen, onUpdateColumn, onMoveColumn, onDeleteColumn, onSendMessage, onCreateTask, onUpdateTask, onDeleteTask, onMoveTask, onCreateComment, onUploadTaskAttachment, onDeleteTaskAttachment, onCreateSubtask, onUpdateSubtask, onDeleteSubtask, addToast }) => {
     const [tasks, setTasks] = useState(project.tasks);
     const [columns, setColumns] = useState(project.columns);
     const [columnOrder, setColumnOrder] = useState(project.columnOrder);
@@ -347,6 +350,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     };
     
     const handleUpdateTask = (updatedTask: Task) => {
+        setTasks(prev => ({ ...prev, [updatedTask.id]: updatedTask }));
         onUpdateTask(project.id, updatedTask.id, updatedTask)
     };
     
@@ -375,6 +379,18 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
 
     const handleDeleteAttachment = (attachmentId: string) => {
         onDeleteTaskAttachment(project.id, selectedTask.id, attachmentId);
+    };
+
+    const handleCreateSubtask = (taskId: string, title: string) => {
+        return onCreateSubtask(project.id, taskId, title);
+    };
+
+    const handleUpdateSubtask = (taskId: string, subtaskId: string, data: Partial<Subtask>) => {
+        return onUpdateSubtask(project.id, taskId, subtaskId, data);
+    };
+
+    const handleDeleteSubtask = (taskId: string, subtaskId: string) => {
+        return onDeleteSubtask(project.id, taskId, subtaskId);
     };
 
     const handleAddTask = (columnId: string) => {
@@ -666,6 +682,9 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     onCreateComment={handleCreateComment}
                     onUploadAttachment={handleUploadAttachment}
                     onDeleteAttachment={handleDeleteAttachment}
+                    onCreateSubtask={handleCreateSubtask}
+                    onUpdateSubtask={handleUpdateSubtask}
+                    onDeleteSubtask={handleDeleteSubtask}
                 />
             )}
             

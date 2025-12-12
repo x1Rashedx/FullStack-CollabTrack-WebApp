@@ -224,32 +224,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isDarkMode, onTog
                 </div>
             </section>
 
-            {/* Social Proof */}
-            <section id="testimonials" className="py-24 bg-white dark:bg-gray-900">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <TestimonialCard 
-                            quote="CollabTrack changed how we deliver software. It's cleaner than Jira and faster than Trello."
-                            author="Sarah Jenkins"
-                            role="Product Manager at TechFlow"
-                            avatar="https://i.pravatar.cc/150?u=1"
-                        />
-                        <TestimonialCard 
-                            quote="The real-time chat integration is a game changer. We stopped using Slack for project-specific comms."
-                            author="David Chen"
-                            role="Lead Developer at StartUp Inc"
-                            avatar="https://i.pravatar.cc/150?u=2"
-                        />
-                        <TestimonialCard 
-                            quote="Finally, a project tool that doesn't feel like a spreadsheet. My design team actually loves using it."
-                            author="Emily Rodriguez"
-                            role="Creative Director at Studio 54"
-                            avatar="https://i.pravatar.cc/150?u=3"
-                        />
-                    </div>
-                </div>
-            </section>
-
             {/* CTA Section */}
             <section className="py-20 bg-brand-600 dark:bg-brand-700">
                 <div className="max-w-4xl mx-auto px-4 text-center">
@@ -263,7 +237,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isDarkMode, onTog
                     >
                         Get Started for Free
                     </button>
-                    <p className="mt-4 text-sm text-brand-200 opacity-80">No credit card required. Cancel anytime.</p>
                 </div>
             </section>
 

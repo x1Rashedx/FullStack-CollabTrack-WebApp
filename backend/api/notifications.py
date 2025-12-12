@@ -87,14 +87,9 @@ def _format_title_body(n: Notification):
     data = n.data or {}
     actor = getattr(n, 'actor', None)
     actor_name = None
+    
     if actor:
-        # Prefer full name, then username/email
-        try:
-            actor_name = actor.get_full_name() or None
-        except Exception:
-            actor_name = None
-        if not actor_name:
-            actor_name = getattr(actor, 'name', None) or getattr(actor, 'email', None)
+        actor_name = getattr(actor, 'name', None) or getattr(actor, 'email', None)
 
     # Normalize verb to a stable key (e.g. 'task_assigned') and friendly text
     verb_key = (n.verb or '').lower().replace(' ', '_').strip()
@@ -125,6 +120,17 @@ def _format_title_body(n: Notification):
             body = f"\"{body_actor}\" assigned you to the task {task_part} in \"{project_name}\""
         else:
             body = f"\"{body_actor}\" assigned you to a task {task_part}"
+        return title, body
+    
+    if verb_key == 'join_request':
+        # Title: "name" requested to join your team
+        title_actor = actor_name or 'Someone'
+        title = f"{title_actor} requested to join your team"
+
+        # Body: "name" has requested to join "team name"
+        body_actor = actor_name or 'Someone'
+        team_name = data.get('teamName') or 'your team'
+        body = f"{body_actor} has requested to join \"{team_name}\""
         return title, body
 
     # Default title when not task_assigned

@@ -242,7 +242,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ currentUser, projects, isDark
                                         <div className="relative">
                                             <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                             <input 
-                                                type="tel" name="phone" value={formState.phone || ''} onChange={handleChange} placeholder="+1 (555) 000-0000"
+                                                type="tel" name="phone" value={formState.phone || ''} onChange={handleChange} placeholder="+966 555 555 555"
                                                 className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all dark:text-white"
                                             />
                                         </div>

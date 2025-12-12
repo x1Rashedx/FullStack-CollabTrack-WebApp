@@ -14,6 +14,7 @@ import {
     BarChart3, LayoutGrid, List
 } from 'lucide-react';
 import Avatar from '@/components/common/Avatar';
+import { Spinner } from '@/components/common';
 
 interface TeamsPageProps {
     currentUser: User;
@@ -61,7 +62,6 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
     
     // Sidebar State
     const [isTeamListCollapsed, setTeamListCollapsed] = useState(false);
-    const [sidebarWidth, setSidebarWidth] = useState(280);
     const [isResizing, setIsResizing] = useState(false);
 
     // Selection & Tabs
@@ -81,6 +81,15 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
     
     const userTeams = allTeams.filter(team => team.members.some(m => m.user.id === currentUser.id));
     const otherTeams = allTeams.filter(team => !team.members.some(m => m.user.id === currentUser.id));
+
+    const [sidebarWidth, setSidebarWidth] = useState(() => {
+        const saved = localStorage.getItem("teamsSidebarWidth");
+        return saved ? parseInt(saved, 10) : 320;
+    });
+
+    useEffect(() => {
+        localStorage.setItem("teamsSidebarWidth", sidebarWidth.toString());
+    }, [sidebarWidth]);
 
     // --- Effects ---
 
@@ -290,17 +299,9 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
                         ))}
                     </div>
 
-                    {/* Action: Create Team */}
-                    <button 
-                        onClick={() => setCreateTeamModalOpen(true)}
-                        className={`w-full flex items-center ${isTeamListCollapsed ? 'justify-center' : 'justify-start'} gap-3 p-2 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 text-gray-500 dark:text-gray-400 transition-colors`}
-                        title="Create New Team"
-                    >
-                        <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                            <Plus size={20} />
-                        </div>
-                        {!isTeamListCollapsed && <span className="text-sm font-medium">Create Team</span>}
-                    </button>
+                    {!isTeamListCollapsed && userTeams.length === 0 && (
+                        <p className="px-3 pb-7 text-sm text-gray-500">You are not a member of any team yet.</p>
+                    )}
 
                     {/* Other Teams (Discover) */}
                     {otherTeams.length > 0 && (
@@ -326,11 +327,11 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
                                                         disabled={hasRequested}
                                                         className={`p-1.5 rounded-lg text-xs font-medium transition-colors ${
                                                             hasRequested 
-                                                                ? 'text-gray-400 cursor-not-allowed' 
-                                                                : 'bg-white dark:bg-gray-600 text-brand-600 dark:text-brand-300 shadow-sm hover:bg-brand-50'
+                                                                ? 'bg-white dark:bg-gray-800 text-gray-400 border border-gray-200/80 dark:border-gray-700/80 cursor-not-allowed' 
+                                                                : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700/50 text-brand-600 dark:text-brand-300 shadow-sm hover:bg-brand-50'
                                                         }`}
                                                     >
-                                                        {hasRequested ? <Check size={16} /> : <Plus size={16} />}
+                                                        {hasRequested ? "Requested" : "Join"}
                                                     </button>
                                                 )}
                                             </div>
@@ -822,8 +823,26 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
                         </div>
                     </div>
                 ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
+                    <div className="flex-1 flex flex-col h-full gap-6 items-center justify-center p-8 text-center bg-white dark:bg-gray-900/50">
+                        <div className='flex flex-col items-center justify-center'>
+                            <div className="w-24 h-24 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center mb-6 animate-float">
+                                <Users size={40} className="text-brand-500" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Welcome to Teams</h2>
+                            <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                                Collaborate with your colleagues on projects and tasks seamlessly.
+                                Create or Join a team to get started. 
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => setCreateTeamModalOpen(true)}
+                            className="border-2 w-1/2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center text-gray-400 hover:text-brand-600 hover:border-brand-300 hover:bg-brand-50/50 dark:hover:bg-brand-900/20 transition-all min-h-[240px]"
+                        >
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                                <Plus size={32} />
+                            </div>
+                            <span className="font-semibold">Create New Team</span>
+                        </button>
                     </div>
                 )}
             </div>

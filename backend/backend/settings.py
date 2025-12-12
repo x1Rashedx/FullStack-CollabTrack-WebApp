@@ -43,13 +43,27 @@ ALLOWED_HOSTS = [
     os.getenv("BACKEND_URL", "").replace("https://","").replace("http://",""),
 ]
 
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
 # Allow frontend requests (temporarily)
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
     "http://localhost:5173",  # Vite dev server
-    "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
     os.getenv("FRONTEND_URL", "http://localhost:5173"),
+]
+
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS"
+]
+
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
 ]
 
 AUTH_USER_MODEL = "api.User"

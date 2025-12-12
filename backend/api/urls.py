@@ -1,10 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_nested import routers
 from .views import (
     UserViewSet, TeamViewSet, ProjectViewSet, ColumnViewSet, TaskViewSet,
-    AttachmentViewSet, CommentViewSet, ChatMessageViewSet, DirectMessageViewSet, AllDataView, 
-    # new
-    NotificationViewSet, PushTokenViewSet,
+    AttachmentViewSet, CommentViewSet, ChatMessageViewSet, DirectMessageViewSet, 
+    AllDataView, SubtaskViewSet, NotificationViewSet, PushTokenViewSet,
 )
 
 router = DefaultRouter()
@@ -20,9 +20,11 @@ router.register(r"messages", DirectMessageViewSet)
 router.register(r"notifications", NotificationViewSet)
 router.register(r"push-tokens", PushTokenViewSet)
 
+tasks_router = routers.NestedDefaultRouter(router, r"tasks", lookup="task")
+tasks_router.register(r"subtasks", SubtaskViewSet, basename="task-subtasks")
+
 urlpatterns = [
     path("", include(router.urls)),
+    path("", include(tasks_router.urls)),
     path("data/", AllDataView.as_view(), name="all-data"),
-    #path("projects/<uuid:project_id>/column/update/", update_column),
-    #path("projects/<uuid:project_id>/chatmessages/", send_chat_message),
 ]

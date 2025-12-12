@@ -17,10 +17,11 @@ import SearchPage from '@pages/SearchPage';
 import NotificationsPage from '@pages/NotificationsPage';
 
 // Services & Types
-import { authService, projectService, taskService, columnService, teamService, messageService, userService, fetchVersion, registerForPush } from '@services/index';
-import type { Project, Task, User, Team, DirectMessage, Folder } from '@/types';
+import { authService, projectService, taskService, subtaskService, columnService, teamService, messageService, userService, fetchVersion, registerForPush, unregisterPush } from '@services/index';
+import type { Project, Task, Subtask, User, Team, DirectMessage, Folder } from '@/types';
 import { Layout } from 'lucide-react';
 import { on } from 'events';
+
 
 
 function App() {
@@ -77,14 +78,16 @@ function App() {
 
     useEffect(() => {
         // Try to register for push notifications (best-effort)
+        if (!currentUser) return;
         (async () => {
         try {
-            await registerForPush();
+            const token = await registerForPush();
+            localStorage.setItem('pushToken', token ?? '');
         } catch (e) {
             // ignore errors from push registration
         }
         })();
-    }, []);
+    }, [currentUser]);
 
 
     // useEffect(() => {
@@ -186,11 +189,11 @@ function App() {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
     
-    const handleLogin = async (email, password) => {
-        setIsLoading(true);
+    const handleLogin = async (email: string, password: string) => {
         setError(null);
         try {
             await authService.login(email, password);
+            setIsLoading(true);
             const user = await authService.getCurrentUser();
             setCurrentUser(user);
             const data = await userService.fetchAllUserData();
@@ -215,11 +218,11 @@ function App() {
     };
 
     const handleRegister = async (name: string, email: string, password: string) => {
-        setIsLoading(true);
         setError(null);
         try {
             // Call your API to create a new user
             await authService.register({ name, email, password });
+            setIsLoading(true);
 
             // Optionally, log the user in immediately
             await authService.login(email, password);
@@ -256,7 +259,10 @@ function App() {
     };
 
     
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        const token = localStorage.getItem('pushToken');
+        if (token) await unregisterPush(token);
+        localStorage.removeItem('pushToken');
         authService.logout();
         setCurrentUser(null);
         setProjects({});
@@ -517,6 +523,21 @@ function App() {
             });
     };
 
+    const handleCreateSubtask = async (projectId: string, taskId: string, title: string) => {
+        return subtaskService.create(taskId, title)
+            .catch(() => addToast('Failed to create subtask.', 'error'));
+    };
+
+    const handleUpdateSubtask = async (projectId: string, taskId: string, subtaskId: string, data: Partial<Subtask>) => {
+        return subtaskService.update(taskId, subtaskId, data)
+            .catch(() => addToast('Failed to update subtask.', 'error'));
+    };
+
+    const handleDeleteSubtask = async (projectId: string, taskId: string, subtaskId: string) => {
+        return subtaskService.delete(taskId, subtaskId)
+            .catch(() => addToast('Failed to delete subtask.', 'error'));
+    };
+
 
     const handleSendMessage = async (projectId: string, content: string) => {
         try {
@@ -708,7 +729,7 @@ function App() {
                 <Layout size={64} className="text-primary-500 mb-6 animate-float" />
                 <h1 className="text-3xl font-bold opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>CollabTrack</h1>
                 <p className="text-sm text-gray-500 mt-2 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s' }}>Loading workspace...</p>
-                <Spinner className="mt-8" /> {/* Re-use Spinner, can add specific classes here */}
+                <Spinner className="mt-8 h-12 w-12" /> {/* Re-use Spinner, can add specific classes here */}
             </div>
         );
     }
@@ -748,6 +769,7 @@ function App() {
     const userTeams = Object.values(teams).filter(team => team.members.some(m => m.user.id === currentUser.id));
     const userTeamIds = userTeams.map(t => t.id);
     const userProjects = Object.values(projects).filter(p => userTeamIds.includes(p.teamId));
+    const userNotifications = Object.values(notifications).filter(n => n.user === currentUser.id);
 
     const currentProject = currentProjectId ? projects[currentProjectId] : null;
     const currentTeamForProject = currentProject ? teams[currentProject.teamId] : null;
@@ -800,16 +822,16 @@ function App() {
                     onSelectTask={handleSelectTaskFromSearch}
                     onSearchSubmit={handleSearchSubmit}
                     currentPage={currentPage}
-                    notifications={Object.values(notifications)}
+                    notifications={userNotifications}
                  />
                  <main className="flex-1 flex flex-col overflow-hidden min-h-0">
                     {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onSelectTask={handleSelectTaskFromSearch}/></div>}
-                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
+                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onCreateSubtask={handleCreateSubtask} onUpdateSubtask={handleUpdateSubtask} onDeleteSubtask={handleDeleteSubtask} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
                     {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onDeleteTeam={handleDeleteTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
                     {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} allUsers={users} allTeams={teams} />}
                     {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onSelectTask={handleSelectTaskFromSearch} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
-                    {currentPage === 'notifications' && <NotificationsPage currentUser={currentUser} allUsers={users} notifications={Object.values(notifications)} onNotificationsUpdate={setNotifications} />}
+                    {currentPage === 'notifications' && <NotificationsPage currentUser={currentUser} allUsers={users} notifications={userNotifications} onNotificationsUpdate={setNotifications} />}
                 </main>
             </div>
         </div>
