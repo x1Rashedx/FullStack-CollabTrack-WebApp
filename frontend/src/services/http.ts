@@ -7,15 +7,21 @@ import { add } from "@dnd-kit/utilities";
 const API_BASE_URL = import.meta.env.VITE_API_URL + "/api";
 
 let authToken: string | null = null;
+
 export let fetchVersion = 0;
 
 export const getAuthToken = (): string | null => {
-    if (authToken) return authToken;
     try {
         const token = localStorage.getItem('authToken');
         if (token) {
-            authToken = token;
-            return token;
+            if (!authToken) {
+                authToken = token;
+                return token;
+            }
+            
+            if (token === authToken) {
+                return token;
+            }
         }
     } catch (e) {
         console.error("Could not read auth token from localStorage", e);
@@ -61,7 +67,6 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
         
         if (response.status === 401 && endpoint !== '/push-tokens/' && endpoint !== '/token/') {
-            clearAuthToken();
             window.location.reload();
             throw new Error("Session expired. Please log in again.");
         }

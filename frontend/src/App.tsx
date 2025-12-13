@@ -82,7 +82,7 @@ function App() {
         (async () => {
         try {
             const token = await registerForPush();
-            localStorage.setItem('pushToken', token ?? '');
+            localStorage.setItem(`pushToken`, token ?? '');
         } catch (e) {
             // ignore errors from push registration
         }
@@ -158,8 +158,7 @@ function App() {
                     setUsers(data.users);
                 } catch (err) {
                     // Token is invalid or expired
-                    authService.logout();
-                    setCurrentUser(null);
+                    handleLogout();
                 }
             }
             setIsLoading(false);
@@ -260,9 +259,9 @@ function App() {
 
     
     const handleLogout = async () => {
-        const token = localStorage.getItem('pushToken');
+        const token = localStorage.getItem(`pushToken`);
         if (token) await unregisterPush(token);
-        localStorage.removeItem('pushToken');
+        localStorage.removeItem(`pushToken`);
         authService.logout();
         setCurrentUser(null);
         setProjects({});

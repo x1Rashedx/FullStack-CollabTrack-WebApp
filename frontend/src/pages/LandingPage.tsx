@@ -122,12 +122,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, isDarkMode, onTog
                             >
                                 Start for Free <ArrowRight size={20} />
                             </button>
-                            <button 
-                                onClick={onDemoLogin}
-                                className="w-full sm:w-auto px-8 py-4 text-base font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2"
-                            >
-                                <Zap size={20} className="text-yellow-500" /> Live Demo
-                            </button>
                         </div>
                     </div>
 
