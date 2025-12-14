@@ -259,6 +259,7 @@ function App() {
 
     
     const handleLogout = async () => {
+        setIsLoading(true);
         const token = localStorage.getItem(`pushToken`);
         if (token) await unregisterPush(token);
         localStorage.removeItem(`pushToken`);
@@ -270,6 +271,7 @@ function App() {
         setCurrentPage('dashboard');
         setCurrentProjectId(null);
         navigateURL("/");
+        setIsLoading(false);
     };
     
     const handleCloseOnboarding = () => {
@@ -421,7 +423,7 @@ function App() {
                     }
                 }))
 
-                addToast('task updated successfully!', 'success');
+                addToast('Task updated successfully!', 'success');
             })
             .catch(() => {
                 addToast('Failed to update task.', 'error');
@@ -491,7 +493,7 @@ function App() {
                         }
                     }
                 }))
-                addToast('Attachment uploaded successfully!', 'success');
+                //addToast('Attachment uploaded successfully!', 'success');
                 return newAttachments;
             })
             .catch((err) => { 
@@ -500,7 +502,7 @@ function App() {
     };
 
     const handleDeleteTaskAttachment = async (projectId: string, taskId: string, attachmentId: string) => {
-        taskService.deleteAttachment(attachmentId)
+        return taskService.deleteAttachment(attachmentId)
             .then(() => {
                 setProjects(prev => ({
                     ...prev,

@@ -45,7 +45,7 @@ interface ProjectPageProps {
     onMoveTask: (projectId: string, taskId: string, toColumnId: string, position?: number) => void;
     onCreateComment: (projectId: string, taskId: string, content: string) => void;
     onUploadTaskAttachment: (projectId: string, taskId: string, file: File) => Promise<Attachment>;
-    onDeleteTaskAttachment: (projectId: string, taskId: string, attachmentId: string) => void;
+    onDeleteTaskAttachment: (projectId: string, taskId: string, attachmentId: string) => Promise<void>;
     onCreateSubtask: (projectId: string, taskId: string, title: string) => Promise<void>;
     onUpdateSubtask: (projectId: string, taskId: string, subtaskId: string, data: Partial<Subtask>) => Promise<void>;
     onDeleteSubtask: (projectId: string, taskId: string, subtaskId: string) => Promise<void>;
@@ -378,7 +378,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     };
 
     const handleDeleteAttachment = (attachmentId: string) => {
-        onDeleteTaskAttachment(project.id, selectedTask.id, attachmentId);
+        return onDeleteTaskAttachment(project.id, selectedTask.id, attachmentId);
     };
 
     const handleCreateSubtask = (taskId: string, title: string) => {

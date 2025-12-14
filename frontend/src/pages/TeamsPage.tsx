@@ -14,7 +14,7 @@ import {
     BarChart3, LayoutGrid, List
 } from 'lucide-react';
 import Avatar from '@/components/common/Avatar';
-import { Spinner } from '@/components/common';
+import { TEAM_ICONS } from '@/utils/constants';
 
 interface TeamsPageProps {
     currentUser: User;
@@ -33,17 +33,6 @@ interface TeamsPageProps {
     teamToSelect: string | null;
     onClearTeamToSelect: () => void;
 }
-
-const TEAM_ICONS = [
-    'bg-gradient-to-tr from-cyan-400 to-blue-600',
-    'bg-gradient-to-tr from-purple-400 to-pink-600',
-    'bg-gradient-to-tr from-green-400 to-teal-600',
-    'bg-gradient-to-tr from-yellow-400 to-orange-600',
-    'bg-gradient-to-tr from-red-500 to-red-700',
-    'bg-gradient-to-tr from-indigo-500 to-purple-700',
-    'bg-gradient-to-tr from-gray-600 to-gray-800',
-    'bg-gradient-to-tr from-pink-500 to-rose-500',
-];
 
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 400;
@@ -364,10 +353,9 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
                 {selectedTeam ? (
                     <div className="min-h-full pb-10">
                         {/* 1. Hero Section */}
-                        <div className={`relative h-48 w-full ${selectedTeam.icon} transition-all duration-700`}>
-                            <div className="absolute inset-0 bg-gray-50/20"></div>
+                        <div className={`relative h-48 w-full ${selectedTeam.icon} border border-transparent border-0 dark:border-gray-900 transition-all duration-700`}>                           
                             {/* Gradient Overlay for Text Readability */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-transparent to-transparent transition-all duration-1000"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t dark:from-gray-900/90 from-gray-600/90 via-transparent to-transparent transition-all duration-1000"></div>
                             
                             <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                                 <div className="flex items-end gap-6">
@@ -824,6 +812,7 @@ const TeamsPage: React.FC<TeamsPageProps> = ({
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col h-full gap-6 items-center justify-center p-8 text-center bg-white dark:bg-gray-900/50">
+                        <div className="opacity-0 animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
                         <div className='flex flex-col items-center justify-center'>
                             <div className="w-24 h-24 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center mb-6 animate-float">
                                 <Users size={40} className="text-brand-500" />

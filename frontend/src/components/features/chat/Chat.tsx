@@ -9,7 +9,7 @@ interface ChatProps {
     messages: ChatMessage[];
     currentUser: User;
     // FIX: Updated onSendMessage to return Promise<void>
-    onSendMessage: (content: string, attachments: Attachment[], parentId?: string) => Promise<void>; 
+    onSendMessage: (content: string, attachments?: Attachment[], parentId?: string) => void; 
     isCollapsed: boolean;
     onToggleCollapse: () => void;
     width: number;
@@ -74,7 +74,7 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
         const attachments = selectedFiles.map(fileToAttachment);
         const parentId = replyingToMessage?.id;
 
-        await onSendMessage(newMessage.trim(), attachments, parentId); // Await the send operation
+        onSendMessage(newMessage.trim(), attachments, parentId); // Await the send operation
         setNewMessage('');
         setSelectedFiles([]);
         setReplyingToMessage(null);

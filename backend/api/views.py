@@ -519,15 +519,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             rel_path = os.path.join('attachments', unique_name)
             saved_path = default_storage.save(rel_path, f)
 
-            # build an absolute URL to the saved file
-            try:
-                file_url = default_storage.url(saved_path)
-                if not file_url.startswith('http'):
-                    file_url = request.build_absolute_uri(file_url)
-            except Exception:
-                file_url = request.build_absolute_uri(settings.MEDIA_URL + saved_path)
-
-            att = Attachment.objects.create(name=f.name, url=file_url)
+            att = Attachment.objects.create(name=f.name, url=saved_path)
             task.attachments.add(att)
             created.append(att)
 

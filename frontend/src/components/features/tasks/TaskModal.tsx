@@ -4,6 +4,7 @@ import type { Task, User, Comment, Attachment, Subtask } from '@/types';
 import Avatar from '@components/common/Avatar';
 import CustomDatePicker from '@components/features/calendar/CustomDatePicker';
 import ConfirmationModal from '@components/modals/ConfirmationModal';
+import { API_URL } from '@/utils/constants';
 
 interface TaskModalProps {
     task: Task;
@@ -16,7 +17,7 @@ interface TaskModalProps {
 
     onCreateComment: (taskId: string, content: string) => void;
     onUploadAttachment: (taskId: string, file: File) => Promise<Attachment>;
-    onDeleteAttachment: (attachmentId: string) => void;
+    onDeleteAttachment: (attachmentId: string) => Promise<void>;
     onCreateSubtask: (taskId: string, title: string) => Promise<void>;
     onUpdateSubtask: (taskId: string, subtaskId: string, data: Partial<Subtask>) => Promise<void>;
     onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void>;
@@ -235,8 +236,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
         setHasUnsavedChanges(true);
     };
 
-    const handleRemoveAttachment = (attachmentId: string) => {
-        onDeleteAttachment(attachmentId);
+    const handleRemoveAttachment = async (attachmentId: string) => {
+        setIsSaving(true);
+        await onDeleteAttachment(attachmentId);
+        setIsSaving(false);
     };
 
     const handleAddSubtask = () => {
@@ -645,15 +648,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                                 <div className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-500">
                                                     <Paperclip size={14} />
                                                 </div>
-                                                <button type="button" onClick={() => handleRemoveAttachment(att.id)} className="text-gray-400 hover:text-error-status-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <X size={14} />
+                                                <button type="button" onClick={() => {handleRemoveAttachment(att.id)}} className="text-gray-400 hover:text-error-status-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {!isSaving ? <X size={14} /> : <Loader2 size={14} className="animate-spin" />}
                                                 </button>
                                             </div>
                                             <div className="mt-2">
                                                 <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate" title={att.name}>{att.name}</div>
                                                 <div className="flex justify-between items-center mt-1">
                                                     <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{att.name.split('.').pop()}</span>
-                                                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-medium text-primary-600 dark:text-primary-400 hover:underline">Download</a>
+                                                    <a href={`${API_URL}/database/media/${att.url}`} target="_blank" rel="noopener noreferrer" className="text-[10px] font-medium text-primary-600 dark:text-primary-400 hover:underline">Download</a>
                                                 </div>
                                             </div>
                                         </div>
@@ -688,7 +691,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onClose, onUpdateTask, onDe
                                     >
                                         <UploadCloud className="h-5 w-5 text-gray-400 mb-1" />
                                         <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Upload</span>
-                                        <input id="task-file-upload-input" type="file" multiple className="hidden" onChange={(e) => e.target.files && handleAddAttachments(e.target.files)} />
+                                        <input id="task-file-upload-input" type="file" multiple className="hidden" onChange={(e) => {if (e.target.files) { handleAddAttachments(e.target.files); e.target.value = ""; }}} />
                                     </div>
                                 </div>
                             </section>
