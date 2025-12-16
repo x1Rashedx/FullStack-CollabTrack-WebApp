@@ -73,7 +73,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
 
         if (!response.ok && endpoint === '/users/register/') {
             const errorData = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }))
-            const messages = errorData.password?.join(" ") || errorData.email?.join(" ") || "Unknown error"
+            const messages = errorData.email?.join(" ") || errorData.password?.join(" ") || "Unknown error"
             const capitalized = messages.charAt(0).toUpperCase() + messages.slice(1);
             throw new Error(capitalized)
         }

@@ -159,6 +159,7 @@ function App() {
                 } catch (err) {
                     // Token is invalid or expired
                     handleLogout();
+                    addToast('Session expired. Please log in again.', 'error');
                 }
             }
             setIsLoading(false);
@@ -250,7 +251,6 @@ function App() {
 
         } catch (err: any) {
             setError(err.message || 'Registration failed. Please try again.');
-            addToast(err.message || 'Registration failed.', 'error');
             throw err; // Let the register page handle it too
         } finally {
             setIsLoading(false);
@@ -744,18 +744,26 @@ function App() {
                     onToggleTheme={() => setIsDarkMode(!isDarkMode)}
                     onDemoLogin={() => {}}
                 />
+                
             );
         }
         return (
-             <LoginPage 
-                onLogin={handleLogin} 
-                onRegister={handleRegister} 
-                isDarkMode={isDarkMode} 
-                onBack={() => setAuthView('landing')} 
-                initialMode={authView === 'signup' ? 'signup' : 'signin'} 
-                onToggleTheme={() => setIsDarkMode(!isDarkMode)} 
-                onNavigateURL={navigateURL} 
-             />
+            <div>
+                <div className="absolute top-4 right-4 z-50 space-y-2">
+                    {toasts.map(toast => (
+                        <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
+                    ))}
+                </div>
+                <LoginPage 
+                    onLogin={handleLogin} 
+                    onRegister={handleRegister} 
+                    isDarkMode={isDarkMode} 
+                    onBack={() => setAuthView('landing')} 
+                    initialMode={authView === 'signup' ? 'signup' : 'signin'} 
+                    onToggleTheme={() => setIsDarkMode(!isDarkMode)} 
+                    onNavigateURL={navigateURL} 
+                />
+            </div>
         );
     }
     

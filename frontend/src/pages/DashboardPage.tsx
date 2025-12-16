@@ -67,7 +67,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
         <div className="p-4 sm:p-6 lg:p-8 space-y-8 opacity-0 animate-fade-in pb-24 overflow-y-auto h-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Hello, {currentUser.name}</h1>
                     <p className="text-gray-500 dark:text-gray-400">Overview of your workspace.</p>
                 </div>
                  <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-brand-600 text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:focus:ring-offset-gray-900 w-full sm:w-auto justify-center transition-transform transform hover:-translate-y-0.5">
