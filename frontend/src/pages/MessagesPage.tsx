@@ -5,12 +5,13 @@ import type { User, DirectMessage, Attachment, Team } from '@/types';
 import Avatar from '@components/common/Avatar';
 import NewChatModal from '@components/modals/NewChatModal'; // Import the new modal
 import Spinner from '@components/common/Spinner';
+import { API_URL } from '@/utils';
 
 interface MessagesPageProps {
     currentUser: User;
     users: { [key: string]: User };
     directMessages: DirectMessage[];
-    onSendMessage: (receiverId: string, content: string, attachments: Attachment[], parentId?: string) => void;
+    onSendMessage: (receiverId: string, content: string, attachments?: File[], parentId?: string) => void;
     initialPartnerId: string | null;
     onNavigateToUser: (userId: string) => void;
     onViewUser: (user: User) => void;
@@ -36,7 +37,7 @@ const formatMessageTime = (isoString: string) => {
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
     const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
-    
+
     if (isToday) {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (isYesterday) {
@@ -59,7 +60,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
     const [isUserListCollapsed, setUserListCollapsed] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,16 +81,16 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
     const contacts = useMemo(() => {
         // Fix: Explicitly type 'otherUsers' to avoid 'unknown' inference in map
         const otherUsers = (Object.values(users) as User[]).filter((u: User) => u.id !== currentUser.id);
-        
+
         return otherUsers.map(user => {
             const msgs = directMessages.filter(
                 m => (m.senderId === currentUser.id && m.receiverId === user.id) ||
-                     (m.senderId === user.id && m.receiverId === currentUser.id)
+                    (m.senderId === user.id && m.receiverId === currentUser.id)
             );
             // Sort to find last message
             const sortedMsgs = msgs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
             const lastMsg = sortedMsgs[0];
-            
+
             return {
                 user,
                 lastMessage: lastMsg,
@@ -99,8 +100,8 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
             // Sort contacts by most recent message, then alphabetical
             if (b.timestamp !== a.timestamp) return b.timestamp - a.timestamp;
             return a.user.name.localeCompare(b.user.name);
-        }).filter(contact => 
-            contact.user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        }).filter(contact =>
+            contact.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             contact.user.email?.toLowerCase().includes(searchQuery.toLowerCase())
         );
     }, [users, directMessages, currentUser.id, searchQuery]);
@@ -114,7 +115,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
             // setSelectedPartnerId(contacts[0].user.id);
         }
     }, [initialPartnerId, selectedPartnerId, onNavigateToUser]); // Removed contacts from deps to prevent auto-switching on search
-    
+
     // Scroll to bottom
     useEffect(() => {
         if (selectedPartnerId) {
@@ -125,10 +126,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
     const handleSendMessage = () => {
         if (!newMessage.trim() && selectedFiles.length === 0 || !selectedPartnerId) return;
 
-        const attachments = selectedFiles.map(fileToAttachment);
         const parentId = replyingToMessage?.id;
 
-        onSendMessage(selectedPartnerId!, newMessage.trim(), attachments, parentId);
+        const files = Array.from(selectedFiles);
+        onSendMessage(selectedPartnerId!, newMessage.trim(), files, parentId);
         setNewMessage('');
         setSelectedFiles([]);
         setReplyingToMessage(null);
@@ -163,13 +164,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-        
+
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     };
-    
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
@@ -192,7 +193,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
         if (!selectedPartnerId) return [];
         return directMessages.filter(
             dm => (dm.senderId === currentUser.id && dm.receiverId === selectedPartnerId) ||
-                  (dm.senderId === selectedPartnerId && dm.receiverId === currentUser.id)
+                (dm.senderId === selectedPartnerId && dm.receiverId === currentUser.id)
         ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }, [directMessages, currentUser.id, selectedPartnerId]);
 
@@ -208,7 +209,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
     return (
         <div className="flex h-full relative bg-white dark:bg-gray-900 overflow-hidden">
             {/* --- Contacts Sidebar --- */}
-            <div 
+            <div
                 className={`bg-gray-50/80 dark:bg-gray-800/80 backdrop-blur-xl border-r dark:border-gray-700 flex flex-col ${isResizing ? '' : 'transition-all duration-300 ease-in-out'} relative flex-shrink-0 z-20`}
                 style={{ width: isUserListCollapsed ? COLLAPSED_WIDTH : sidebarWidth }}
             >
@@ -218,7 +219,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                         <h2 className={`text-xl font-bold text-gray-800 dark:text-white ${isUserListCollapsed ? 'hidden' : 'block'}`}>Messages</h2>
                         {isUserListCollapsed && <MessageSquare size={24} className="text-brand-600" />}
                         {!isUserListCollapsed && (
-                            <button 
+                            <button
                                 onClick={() => setIsNewChatModalOpen(true)} // Open NewChatModal
                                 className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500"
                                 title="New Chat"
@@ -230,9 +231,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                     {!isUserListCollapsed && (
                         <div className="relative">
                             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input 
-                                type="text" 
-                                placeholder="Search messages..." 
+                            <input
+                                type="text"
+                                placeholder="Search messages..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all placeholder-gray-400 dark:text-gray-100"
@@ -243,21 +244,17 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
 
                 {/* Contacts List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                    {contacts.map(({ user, lastMessage }) => (
+                    {contacts.map(({ user, lastMessage }) => lastMessage && (
                         <button
                             key={user.id}
                             onClick={() => { setSelectedPartnerId(user.id); onNavigateToUser(user.id); }}
-                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${
-                                selectedPartnerId === user.id 
-                                    ? 'bg-brand-50 dark:bg-brand-900/30 shadow-sm border border-brand-100 dark:border-brand-800/30' 
-                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700/50 border border-transparent'
-                            } ${isUserListCollapsed ? 'justify-center' : ''}`}
+                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${selectedPartnerId === user.id
+                                ? 'bg-brand-50 dark:bg-brand-900/30 shadow-sm border border-brand-100 dark:border-brand-800/30'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700/50 border border-transparent'
+                                } ${isUserListCollapsed ? 'justify-center' : ''}`}
                         >
                             <div className="relative flex-shrink-0">
                                 <Avatar user={user} className={`h-10 w-10 ring-2 ${selectedPartnerId === user.id ? 'ring-brand-200 dark:ring-brand-800' : 'ring-transparent'}`} />
-                                {user.id === 'user-2' && ( // Mock online status for demo
-                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                                )}
                             </div>
                             {!isUserListCollapsed && (
                                 <div className="flex-1 min-w-0 text-left">
@@ -288,13 +285,13 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                 </div>
 
                 {/* Sidebar Collapse/Resize Controls */}
-                <button 
+                <button
                     onClick={() => setUserListCollapsed(p => !p)}
                     className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-1/2 h-16 w-5 flex items-center justify-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 z-30 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm hover:shadow-md"                >
                     {isUserListCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
                 </button>
                 {!isUserListCollapsed && (
-                    <div 
+                    <div
                         onMouseDown={handleMouseDown}
                         className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-brand-500/50 transition-colors z-20"
                     />
@@ -316,7 +313,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                     </p>
                                 </div>
                             </div>
-                            
+
                             <div className="flex items-center gap-2">
                                 <button className="p-2 text-gray-400 hover:text-brand-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Start Call (Mock)">
                                     <Phone size={18} />
@@ -342,9 +339,9 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                             ) : (
                                 conversationMessages.map((msg, index) => {
                                     const isCurrentUser = msg.senderId === currentUser.id;
-                                    const parentMessage = getParentMessageSnippet(msg.parentId);
+                                    const parentMessage = getParentMessageSnippet(msg.replyTo?.id);
                                     const formattedTime = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                    
+
                                     // Date Separator Logic
                                     const prevMsg = conversationMessages[index - 1];
                                     const showDateSeparator = !prevMsg || isDifferentDay(prevMsg.timestamp, msg.timestamp);
@@ -359,17 +356,16 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                                     </span>
                                                 </div>
                                             )}
-                                            
+
                                             <div className={`flex group ${isCurrentUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                                                 <div className={`flex flex-col max-w-[75%] sm:max-w-[65%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
                                                     {/* Reply snippet */}
                                                     {parentMessage && (
-                                                        <div 
-                                                            className={`mb-1 text-xs px-3 py-1.5 rounded-lg border opacity-80 cursor-pointer ${
-                                                                isCurrentUser 
-                                                                    ? 'bg-brand-50 border-brand-100 text-brand-800 dark:bg-brand-900/20 dark:border-brand-800 dark:text-brand-300 mr-1' 
-                                                                    : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 ml-1'
-                                                            }`}
+                                                        <div
+                                                            className={`mb-1 text-xs px-3 py-1.5 rounded-lg border opacity-80 cursor-pointer ${isCurrentUser
+                                                                ? 'bg-brand-50 border-brand-100 text-brand-800 dark:bg-brand-900/20 dark:border-brand-800 dark:text-brand-300 mr-1'
+                                                                : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 ml-1'
+                                                                }`}
                                                         >
                                                             <span className="font-bold mr-1">{users[parentMessage.senderId]?.name}:</span>
                                                             <span className="line-clamp-1">{parentMessage.content}</span>
@@ -378,29 +374,27 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
 
                                                     {/* Message Bubble */}
                                                     <div className="relative">
-                                                        <div 
-                                                            className={`px-4 py-2.5 shadow-sm text-sm relative ${
-                                                                isCurrentUser 
-                                                                    ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white rounded-2xl rounded-tr-none' 
-                                                                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-none'
-                                                            }`}
+                                                        <div
+                                                            className={`px-4 py-2.5 shadow-sm text-sm relative ${isCurrentUser
+                                                                ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white rounded-2xl rounded-tr-none'
+                                                                : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-none'
+                                                                }`}
                                                         >
                                                             <p className="whitespace-pre-wrap break-all leading-relaxed">{msg.content}</p>
-                                                            
+
                                                             {/* Attachments */}
                                                             {msg.attachments && msg.attachments.length > 0 && (
                                                                 <div className="mt-2 space-y-1.5">
                                                                     {msg.attachments.map(att => (
-                                                                        <a 
-                                                                            key={att.id} 
-                                                                            href={att.url} 
-                                                                            target="_blank" 
-                                                                            rel="noopener noreferrer" 
-                                                                            className={`flex items-center gap-2 p-2 rounded-lg text-xs transition-colors ${
-                                                                                isCurrentUser 
-                                                                                    ? 'bg-white/10 hover:bg-white/20 text-white' 
-                                                                                    : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
-                                                                            }`}
+                                                                        <a
+                                                                            key={att.name}
+                                                                            href={`${API_URL}/database/media/${att.url}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className={`flex items-center gap-2 p-2 rounded-lg text-xs transition-colors ${isCurrentUser
+                                                                                ? 'bg-white/10 hover:bg-white/20 text-white'
+                                                                                : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
+                                                                                }`}
                                                                         >
                                                                             <div className={`p-1.5 rounded ${isCurrentUser ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-600'}`}>
                                                                                 <Paperclip size={12} />
@@ -417,11 +411,10 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                                         </div>
 
                                                         {/* Hover Actions */}
-                                                        <button 
+                                                        <button
                                                             onClick={() => setReplyingToMessage(msg)}
-                                                            className={`absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-brand-600 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 ${
-                                                                isCurrentUser ? '-left-10' : '-right-10'
-                                                            }`}
+                                                            className={`absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-brand-600 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 ${isCurrentUser ? '-left-10' : '-right-10'
+                                                                }`}
                                                             title="Reply"
                                                         >
                                                             <CornerDownLeft size={14} />
@@ -449,7 +442,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                     </button>
                                 </div>
                             )}
-                            
+
                             {selectedFiles.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mb-3 opacity-0 animate-slide-up">
                                     {selectedFiles.map((file, index) => (
@@ -463,7 +456,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                             )}
 
                             <div className="relative flex items-center gap-2 m-2 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-2xl shadow-inner focus-within:ring-2 focus-within:ring-brand-500/50 transition-shadow">
-                                <button 
+                                <button
                                     onClick={() => fileInputRef.current?.click()}
                                     className="p-2.5 text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400 rounded-xl transition-colors flex-shrink-0"
                                     title="Attach files"
@@ -477,7 +470,7 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                     onChange={handleFileSelect}
                                     className="hidden"
                                 />
-                                
+
                                 <textarea
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
@@ -487,15 +480,14 @@ export const MessagesPage: React.FC<MessagesPageProps> = ({ currentUser, users, 
                                     className="flex-1 max-h-32 py-2.5 bg-transparent border-none focus:ring-0 outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none custom-scrollbar"
                                     style={{ minHeight: '44px' }}
                                 />
-                                
-                                <button 
+
+                                <button
                                     onClick={handleSendMessage}
                                     disabled={!newMessage.trim() && selectedFiles.length === 0}
-                                    className={`p-2.5 mr-0.5 rounded-xl transition-all duration-200 flex-shrink-0 ${
-                                        !newMessage.trim() && selectedFiles.length === 0
-                                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                                            : 'bg-brand-600 text-white hover:bg-brand-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
-                                    }`}
+                                    className={`p-2.5 mr-0.5 rounded-xl transition-all duration-200 flex-shrink-0 ${!newMessage.trim() && selectedFiles.length === 0
+                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                                        : 'bg-brand-600 text-white hover:bg-brand-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                                        }`}
                                 >
                                     <Send size={18} className={newMessage.trim() ? "ml-0.5" : ""} />
                                 </button>

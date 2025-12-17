@@ -4,7 +4,7 @@ from django.core.files.storage import default_storage
 from django.contrib.auth.password_validation import validate_password
 from .models import (
     Attachment, Comment, Task, Subtask, Column, ChatMessage,
-    TeamMember, Team, Project, DirectMessage
+    TeamMember, Team, Project, DirectMessage, Folder
 )
 from .models import PushToken, Notification
 from .utils import compress_base64_image, rename_file
@@ -186,9 +186,28 @@ class ColumnSerializer(serializers.ModelSerializer):
 class ChatMessageSerializer(serializers.ModelSerializer):
     author = NestedUserSerializer(read_only=True)
     timestamp = serializers.DateTimeField(read_only=True)
+    replyTo = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
+    
     class Meta:
         model = ChatMessage
-        fields = ["id", "author", "content", "timestamp"]
+        fields = ["id", "author", "content", "timestamp", "attachments", "replyTo"]
+    
+    def get_replyTo(self, obj):
+        if obj.reply_to:
+            return {
+                "id": str(obj.reply_to.id),
+                "author": NestedUserSerializer(obj.reply_to.author).data,
+                "content": obj.reply_to.content,
+                "timestamp": obj.reply_to.timestamp,
+            }
+
+    def get_attachments(self, obj):
+        if not obj.attachments:
+            return []
+
+        attachments = Attachment.objects.filter(id__in=obj.attachments)
+        return AttachmentSerializer(attachments, many=True).data
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
@@ -247,14 +266,33 @@ class ProjectSerializer(serializers.ModelSerializer):
 class DirectMessageSerializer(serializers.ModelSerializer):
     senderId = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source="sender", required=False)
     receiverId = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source="receiver")
+    replyTo = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
 
     class Meta:
         model = DirectMessage
-        fields = ["id", "senderId", "receiverId", "content", "timestamp"]
+        fields = ["id", "senderId", "receiverId", "content", "timestamp", "attachments", "replyTo"]
         read_only_fields = ["id", "senderId", "timestamp"]
 
     def create(self, validated_data):
         return super().create(validated_data)
+    
+    def get_replyTo(self, obj):
+        if obj.reply_to:
+            return {
+                "id": str(obj.reply_to.id),
+                "content": obj.reply_to.content,
+                "timestamp": obj.reply_to.timestamp,
+                "senderId": str(obj.reply_to.sender.id),
+            }
+        return None
+    
+    def get_attachments(self, obj):
+        if not obj.attachments:
+            return []
+
+        attachments = Attachment.objects.filter(id__in=obj.attachments)
+        return AttachmentSerializer(attachments, many=True).data
 
 
 class PushTokenSerializer(serializers.ModelSerializer):
@@ -269,3 +307,14 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ["id", "user", "actor", "verb", "data", "channel", "read", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+
+class FolderSerializer(serializers.ModelSerializer):
+    """Serializer for user folders that organize projects."""
+    projectIds = serializers.JSONField(source="project_ids", required=False)
+
+    class Meta:
+        model = Folder
+        fields = ["id", "name", "projectIds", "order"]
+        read_only_fields = ["id"]
+

@@ -20,7 +20,7 @@ interface HeaderProps {
     notifications: any[];
 }
 
-const Header: React.FC<HeaderProps> = ({ 
+const Header: React.FC<HeaderProps> = ({
     currentProject, currentTeam, currentUser, isDarkMode, onToggleTheme, onNavigate, onLogout,
     projects, allUsers, allTeams, onSelectTask, onSearchSubmit, currentPage, notifications
 }) => {
@@ -32,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({
         users: User[]
     }>({ teams: [], projects: [], tasks: [], users: [] });
     const [isSearchFocused, setSearchFocused] = useState(false);
-    
+
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
     const [hasUnread, setHasUnread] = useState(false);
     const [isProfileOpen, setProfileOpen] = useState(false);
@@ -50,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({
         const lowerQuery = searchQuery.toLowerCase();
 
         // Search Tasks
-        const allTasks = projects.flatMap(p => 
+        const allTasks = projects.flatMap(p =>
             Object.values(p.tasks).map(t => ({ task: t, project: p }))
         );
         const filteredTasks = allTasks.filter(({ task }) =>
@@ -62,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({
         const filteredProjects = projects.filter(p =>
             p.name.toLowerCase().includes(lowerQuery)
         ).slice(0, 3);
-        
+
         // Search Teams
         const filteredTeams = allTeams.filter(t =>
             t.name.toLowerCase().includes(lowerQuery)
@@ -72,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({
         const filteredUsers = allUsers.filter(u =>
             u.name.toLowerCase().includes(lowerQuery)
         ).slice(0, 3);
-        
+
         setSearchResults({
             tasks: filteredTasks,
             projects: filteredProjects,
@@ -122,27 +122,27 @@ const Header: React.FC<HeaderProps> = ({
     };
 
     const hasResults = searchResults.tasks.length > 0 || searchResults.projects.length > 0 || searchResults.teams.length > 0 || searchResults.users.length > 0;
-    
+
     const pageTitle = currentPage.charAt(0).toUpperCase() + currentPage.slice(1);
 
     return (
-        <header className="h-16  bg-white dark:bg-gray-900 border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between px-6 flex-shrink-0 z-30">
+        <header className="h-16 z-30 bg-white dark:bg-gray-900 border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-between px-6 flex-shrink-0">
             <div className="min-w-0">
                 <h1 className="text-xl font-semibold text-gray-800 dark:text-white truncate">
                     {currentProject && currentPage === 'project' ? (
                         currentTeam ? (
-                        <div className="flex items-center truncate">
-                            <span
-                                className="text-gray-500 dark:text-gray-400 hover:underline cursor-pointer"
-                                onClick={() => onNavigate('teams')}
-                            >
-                                {currentTeam.name}
-                            </span>
-                            <span className="mx-2 text-gray-400 dark:text-gray-500">/</span>
-                            <span className="truncate">{currentProject.name}</span>
-                        </div>
+                            <div className="flex items-center truncate">
+                                <span
+                                    className="text-gray-500 dark:text-gray-400 hover:underline cursor-pointer"
+                                    onClick={() => onNavigate('teams')}
+                                >
+                                    {currentTeam.name}
+                                </span>
+                                <span className="mx-2 text-gray-400 dark:text-gray-500">/</span>
+                                <span className="truncate">{currentProject.name}</span>
+                            </div>
                         ) : (
-                           <span className="truncate">{currentProject.name}</span>
+                            <span className="truncate">{currentProject.name}</span>
                         )
                     ) : (
                         pageTitle
@@ -169,22 +169,22 @@ const Header: React.FC<HeaderProps> = ({
                                     <li>
                                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tasks</div>
                                         <ul>
-                                        {searchResults.tasks.map(({ task, project }) => (
-                                            <li key={task.id}>
-                                                <button onClick={() => handleSelectTask(project.id, task.id)} className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                    <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{task.title}</p>
-                                                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                        <Briefcase size={12} className="mr-1.5" />
-                                                        <span>{project.name}</span>
-                                                    </div>
-                                                </button>
-                                            </li>
-                                        ))}
+                                            {searchResults.tasks.map(({ task, project }) => (
+                                                <li key={task.id}>
+                                                    <button onClick={() => handleSelectTask(project.id, task.id)} className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                        <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{task.title}</p>
+                                                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                            <Briefcase size={12} className="mr-1.5" />
+                                                            <span>{project.name}</span>
+                                                        </div>
+                                                    </button>
+                                                </li>
+                                            ))}
                                         </ul>
                                     </li>
                                 )}
                                 {searchResults.projects.length > 0 && (
-                                     <ul>
+                                    <ul>
                                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Projects</div>
                                         {searchResults.projects.map(project => (
                                             <li key={project.id}>
@@ -194,10 +194,10 @@ const Header: React.FC<HeaderProps> = ({
                                                 </button>
                                             </li>
                                         ))}
-                                     </ul>
+                                    </ul>
                                 )}
                                 {searchResults.teams.length > 0 && (
-                                     <ul>
+                                    <ul>
                                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Teams</div>
                                         {searchResults.teams.map(team => (
                                             <li key={team.id}>
@@ -207,10 +207,10 @@ const Header: React.FC<HeaderProps> = ({
                                                 </button>
                                             </li>
                                         ))}
-                                     </ul>
+                                    </ul>
                                 )}
-                                 {searchResults.users.length > 0 && (
-                                     <ul>
+                                {searchResults.users.length > 0 && (
+                                    <ul>
                                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Users</div>
                                         {searchResults.users.map(user => (
                                             <li key={user.id}>
@@ -220,10 +220,10 @@ const Header: React.FC<HeaderProps> = ({
                                                 </button>
                                             </li>
                                         ))}
-                                     </ul>
+                                    </ul>
                                 )}
                                 <li className="p-2">
-                                     <button onClick={() => onSearchSubmit(searchQuery)} className="w-full text-center px-4 py-2 text-sm font-medium text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/50 rounded-md">
+                                    <button onClick={() => onSearchSubmit(searchQuery)} className="w-full text-center px-4 py-2 text-sm font-medium text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/50 rounded-md">
                                         View all results for "{searchQuery}"
                                     </button>
                                 </li>
@@ -231,14 +231,14 @@ const Header: React.FC<HeaderProps> = ({
                         </div>
                     )}
                 </div>
-                
+
                 <button onClick={onToggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
-                
+
                 <div className="relative" ref={notificationsRef}>
-                    <button 
-                        onClick={() => onNavigate('notifications')} 
+                    <button
+                        onClick={() => onNavigate('notifications')}
                         className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 relative"
                     >
                         <Bell size={20} />
@@ -249,12 +249,12 @@ const Header: React.FC<HeaderProps> = ({
                 <div className="relative" ref={profileRef}>
                     <button onClick={() => setProfileOpen(prev => !prev)} className="flex items-center p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                         <Avatar user={currentUser} className="h-9 w-9" />
-                         <div className="ml-3 hidden md:block text-left">
+                        <div className="ml-3 hidden md:block text-left">
                             <p className="text-sm font-medium text-gray-800 dark:text-white">{currentUser.name || 'New User'}</p>
                             {currentUser.email && <p className="text-xs text-gray-500 dark:text-gray-400">{currentUser.email}</p>}
                         </div>
                     </button>
-                     {isProfileOpen && (
+                    {isProfileOpen && (
                         <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border dark:border-gray-700 py-1">
                             <button
                                 onClick={() => { onNavigate('settings'); setProfileOpen(false); }}

@@ -19,7 +19,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [editingName, setEditingName] = useState(project.name);
-    
+
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [editingDescription, setEditingDescription] = useState(project.description);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -42,7 +42,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
         }
         setIsEditingDescription(false);
     };
-    
+
     const handleDeleteClick = () => {
         setShowDeleteConfirm(true);
     };
@@ -81,8 +81,8 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2 group">
                                     {project.name}
                                     {isTeamAdmin && (
-                                        <button 
-                                            onClick={() => setIsEditingName(true)} 
+                                        <button
+                                            onClick={() => setIsEditingName(true)}
                                             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
                                             title="Edit Project Name"
                                         >
@@ -96,17 +96,17 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                                 <span>Project ID: {project.id}</span>
                             </div>
                         </div>
-                         <div className={`w-16 h-16 rounded-xl ${team.icon} flex items-center justify-center shadow-inner flex-shrink-0`}>
-                             <span className="text-white font-bold text-xl">{project.name.charAt(0)}</span>
+                        <div className={`w-16 h-16 rounded-xl ${team.icon} flex items-center justify-center shadow-inner flex-shrink-0`}>
+                            <span className="text-white font-bold text-xl">{project.name.charAt(0)}</span>
                         </div>
                     </div>
-                    
+
                     <div className="mt-8">
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-2 flex items-center gap-2">
-                             <AlignLeft size={16} /> Description
-                             {isTeamAdmin && !isEditingDescription && (
-                                <button 
-                                    onClick={() => setIsEditingDescription(true)} 
+                            <AlignLeft size={16} /> Description
+                            {isTeamAdmin && !isEditingDescription && (
+                                <button
+                                    onClick={() => setIsEditingDescription(true)}
                                     className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                     title="Edit Description"
                                 >
@@ -114,7 +114,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                                 </button>
                             )}
                         </h3>
-                        
+
                         {isEditingDescription ? (
                             <textarea
                                 value={editingDescription}
@@ -145,16 +145,16 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                             <Users size={20} className="text-brand-500" /> Owning Team
                         </h3>
                         <div className="flex items-center gap-4 mb-4">
-                             <div className={`w-12 h-12 rounded-lg ${team.icon} shadow-sm`}></div>
-                             <div>
-                                 <p className="font-bold text-gray-900 dark:text-white">{team.name}</p>
-                                 <p className="text-sm text-gray-500 dark:text-gray-400">{team.members.length} members</p>
-                             </div>
+                            <div className={`w-12 h-12 rounded-lg ${team.icon} shadow-sm`}></div>
+                            <div>
+                                <p className="font-bold text-gray-900 dark:text-white">{team.name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{team.members.length} members</p>
+                            </div>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
                             {team.description}
                         </p>
-                        
+
                         <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Team Members</p>
                             <div className="flex flex-wrap gap-2">
@@ -182,7 +182,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                                 <span className="text-gray-600 dark:text-gray-300 text-sm">Completed Tasks</span>
                                 <span className="font-bold text-green-600 dark:text-green-400">{completedCount}</span>
                             </div>
-                             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                 <span className="text-gray-600 dark:text-gray-300 text-sm">Completion Rate</span>
                                 <span className="font-bold text-brand-600 dark:text-brand-400">{completionPercentage}%</span>
                             </div>
@@ -201,7 +201,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                         <p className="text-sm text-red-600 dark:text-red-300 mb-4">
                             Deleting this project will permanently remove all tasks, columns, and history. This action cannot be undone.
                         </p>
-                        <button 
+                        <button
                             onClick={handleDeleteClick}
                             className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors shadow-sm"
                         >
@@ -210,7 +210,7 @@ const ProjectInfo: React.FC<ProjectInfoProps> = ({ project, team, isTeamAdmin, o
                     </div>
                 )}
             </div>
-             <ConfirmationModal
+            <ConfirmationModal
                 isOpen={showDeleteConfirm}
                 onClose={() => setShowDeleteConfirm(false)}
                 onConfirm={confirmDelete}

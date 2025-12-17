@@ -123,6 +123,8 @@ class ChatMessage(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    attachments = models.JSONField(default=list, blank=True)
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
 
 
 class TeamMember(models.Model):
@@ -157,6 +159,8 @@ class DirectMessage(models.Model):
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages")
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    attachments = models.JSONField(default=list, blank=True)  # [{"url": "...", "name": "...", "size": ...}]
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
 
 
 class PushToken(models.Model):
@@ -187,3 +191,19 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class Folder(models.Model):
+    """User-specific folders for organizing projects in the sidebar."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="folders")
+    name = models.CharField(max_length=255)
+    project_ids = models.JSONField(default=list, blank=True)  # ["project_uuid_hex", ...]
+    order = models.IntegerField(default=0)  # Display order in sidebar
+
+    class Meta:
+        ordering = ["order", "id"]  # Order by order field, then by id for consistent sorting
+
+    def __str__(self):
+        return f"{self.name} ({self.user.name})"
+

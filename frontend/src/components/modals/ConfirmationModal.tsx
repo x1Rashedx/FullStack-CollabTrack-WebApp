@@ -23,8 +23,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md z-50" onClick={e => e.stopPropagation()}>
                 <div className="p-6">
                     <div className="flex items-start gap-4">
                         <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50 sm:mx-0 sm:h-10 sm:w-10">

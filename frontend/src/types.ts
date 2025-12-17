@@ -61,27 +61,31 @@ export interface Column {
 export interface ChatMessage {
   id: string;
   projectId: string;
-  author: {id: string, name: string, avatarUrl: string};
+  author: { id: string, name: string, avatarUrl: string };
   content: string;
   timestamp: string;
-
   attachments?: Attachment[];
-  parentId?: string;
+  replyTo?: {
+    id: string;
+    author: { id: string, name: string, avatarUrl: string };
+    content: string;
+    timestamp: string;
+  };
 }
 
 export interface TeamMember {
-    user: User;
-    role: 'admin' | 'member';
+  user: User;
+  role: 'admin' | 'member';
 }
 
 export interface Team {
-    id:string;
-    name: string;
-    description: string;
-    icon: string;
-    members: TeamMember[];
-    projectIds: string[];
-    joinRequests: string[];
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  members: TeamMember[];
+  projectIds: string[];
+  joinRequests: string[];
 }
 
 export interface Project {
@@ -101,7 +105,11 @@ export interface DirectMessage {
   receiverId: string;
   content: string;
   timestamp: string;
-
   attachments?: Attachment[];
-  parentId?: string;
+  replyTo?: {
+    id: string;
+    content: string;
+    timestamp: string;
+    senderId: string;
+  };
 }

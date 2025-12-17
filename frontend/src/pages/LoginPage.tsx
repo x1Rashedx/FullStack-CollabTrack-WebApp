@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Shield, ArrowLeft, Layout, Mail, Lock, User, Sun, Moon, Loader2 } from 'lucide-react';
+import { Shield, ArrowLeft, Layout, Mail, Lock, User, Sun, Moon, Loader2, Eye, EyeOff } from 'lucide-react';
 
 interface LoginPageProps {
     onLogin: (email: string, password: string) => Promise<void>;
@@ -19,6 +19,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
     const [fullName, setFullName] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         setIsLoginView(initialMode === 'signin');
@@ -56,8 +57,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
 
             {/* Theme Toggle */}
             <div className="absolute top-4 right-4 z-20">
-                <button 
-                    onClick={onToggleTheme} 
+                <button
+                    onClick={onToggleTheme}
                     className="p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                     aria-label="Toggle theme"
                 >
@@ -66,7 +67,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
             </div>
 
             <div className="w-full max-w-md mx-auto z-10 flex flex-col justify-center p-4">
-                <button 
+                <button
                     onClick={onBack}
                     className="self-start mb-8 flex items-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
                 >
@@ -95,11 +96,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                             <User size={18} />
                                         </div>
-                                        <input 
-                                            type="text" 
-                                            required 
-                                            value={fullName} 
-                                            onChange={e => setFullName(e.target.value)} 
+                                        <input
+                                            type="text"
+                                            required
+                                            value={fullName}
+                                            onChange={e => setFullName(e.target.value)}
                                             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all dark:text-white sm:text-sm"
                                             placeholder="John Doe"
                                         />
@@ -112,11 +113,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Mail size={18} />
                                     </div>
-                                    <input 
-                                        type="email" 
-                                        required 
-                                        value={email} 
-                                        onChange={e => setEmail(e.target.value)} 
+                                    <input
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={e => setEmail(e.target.value)}
                                         className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all dark:text-white sm:text-sm"
                                         placeholder="name@company.com"
                                     />
@@ -128,14 +129,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                         <Lock size={18} />
                                     </div>
-                                    <input 
-                                        type="password" 
-                                        required 
-                                        value={password} 
-                                        onChange={e => setPassword(e.target.value)} 
-                                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all dark:text-white sm:text-sm"
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        className="w-full pl-10 pr-12 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all dark:text-white sm:text-sm"
                                         placeholder="••••••••"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -145,8 +154,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                                 </div>
                             )}
 
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 disabled={isLoading}
                                 className="w-full h-12 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:focus:ring-offset-gray-800 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
                             >
@@ -157,8 +166,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                         <div className="mt-8 text-center">
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {isLoginView ? "Don't have an account?" : "Already have an account?"}
-                                <button 
-                                    onClick={() => { setIsLoginView(!isLoginView); setError(null); }} 
+                                <button
+                                    onClick={() => { setIsLoginView(!isLoginView); setError(null); }}
                                     className="ml-1 font-semibold text-brand-600 hover:text-brand-500 dark:text-brand-400 dark:hover:text-brand-300 transition-colors"
                                 >
                                     {isLoginView ? 'Sign up' : 'Sign in'}
@@ -167,7 +176,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister, initialMode,
                         </div>
                     </div>
                 </div>
-                
+
                 <p className="text-center mt-6 text-xs text-gray-400 dark:text-gray-500">
                     &copy; {new Date().getFullYear()} CollabTrack. All rights reserved.
                 </p>

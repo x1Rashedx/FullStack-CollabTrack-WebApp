@@ -35,7 +35,7 @@ export const userService = {
 
             return response.json() as Promise<User>;
         }
-        
+
         return apiRequest<User>(`/users/${updatedUser.id}/`, {
             method: 'PUT',
             body: JSON.stringify(updatedUser),
@@ -48,6 +48,7 @@ export const userService = {
         projects: { [key: string]: Project };
         directMessages: { [key: string]: any };
         notifications: any[];
+        folders?: { [key: string]: any };
     }> => {
         return apiRequest('/data/');
     },

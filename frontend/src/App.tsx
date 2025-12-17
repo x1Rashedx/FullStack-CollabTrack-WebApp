@@ -15,9 +15,10 @@ import LandingPage from '@pages/LandingPage';
 import MessagesPage from '@pages/MessagesPage';
 import SearchPage from '@pages/SearchPage';
 import NotificationsPage from '@pages/NotificationsPage';
+import CalendarPage from '@pages/CalendarPage';
 
 // Services & Types
-import { authService, projectService, taskService, subtaskService, columnService, teamService, messageService, userService, fetchVersion, registerForPush, unregisterPush } from '@services/index';
+import { authService, projectService, taskService, subtaskService, columnService, teamService, messageService, userService, fetchVersion, registerForPush, unregisterPush, folderService } from '@services/index';
 import type { Project, Task, Subtask, User, Team, DirectMessage, Folder } from '@/types';
 import { Layout } from 'lucide-react';
 import { on } from 'events';
@@ -30,23 +31,23 @@ function App() {
 
     // Auth Navigation State
     const [authView, setAuthView] = useState<'landing' | 'signin' | 'signup'>('landing');
-    
+
     // Demo Mode State
     const [isDemoMode, setIsDemoMode] = useState(() => {
         return localStorage.getItem('isDemoMode') === 'true';
     });
-    
+
     const [projects, setProjects] = useState<{ [key: string]: Project }>({});
     const [teams, setTeams] = useState<{ [key: string]: Team }>({});
     const [users, setUsers] = useState<{ [key: string]: User }>({});
     const [folders, setFolders] = useState<{ [key: string]: Folder }>({});
     const [directMessages, setDirectMessages] = useState<{ [key: string]: DirectMessage }>({});
     const [notifications, setNotifications] = useState<any[]>([]);
-    
+
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [currentPage, setCurrentPage] = useState<'dashboard' | 'project' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications'>('dashboard');
+    const [currentPage, setCurrentPage] = useState<'dashboard' | 'project' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications' | 'calendar'>('dashboard');
     const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
     const [taskToOpen, setTaskToOpen] = useState<string | null>(null);
     const [currentConversationPartnerId, setCurrentConversationPartnerId] = useState<string | null>(null);
@@ -61,8 +62,8 @@ function App() {
         return saved ? parseInt(saved, 10) : 256;
     });
 
-    const [toasts, setToasts] = useState<{id: number, message: string, type: 'success' | 'error' | 'info'}[]>([]);
-    
+    const [toasts, setToasts] = useState<{ id: number, message: string, type: 'success' | 'error' | 'info' }[]>([]);
+
     const [isDarkMode, setIsDarkMode] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
         return savedTheme ? savedTheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -80,12 +81,12 @@ function App() {
         // Try to register for push notifications (best-effort)
         if (!currentUser) return;
         (async () => {
-        try {
-            const token = await registerForPush();
-            localStorage.setItem(`pushToken`, token ?? '');
-        } catch (e) {
-            // ignore errors from push registration
-        }
+            try {
+                const token = await registerForPush();
+                localStorage.setItem(`pushToken`, token ?? '');
+            } catch (e) {
+                // ignore errors from push registration
+            }
         })();
     }, [currentUser]);
 
@@ -117,13 +118,16 @@ function App() {
             try {
                 const v = fetchVersion;
                 const data = await userService.fetchAllUserData();
-                if (v !== fetchVersion - 1) {throw new Error("Fetch version mismatch");};
+                if (v !== fetchVersion - 1) { throw new Error("Fetch version mismatch"); };
                 setProjects(data.projects);
                 setTeams(data.teams);
                 setDirectMessages(data.directMessages);
                 setUsers(data.users);
                 if (data.notifications) {
                     setNotifications(data.notifications);
+                }
+                if (data.folders) {
+                    setFolders(data.folders);
                 }
                 console.log("Periodic data fetch complete.");
             } catch (err) {
@@ -141,8 +145,8 @@ function App() {
         return () => clearInterval(intervalId);
     }, [currentUser]);
 
-    
-    
+
+
     // Auth check on initial load
     useEffect(() => {
         const authenticateAndLoadData = async () => {
@@ -156,6 +160,9 @@ function App() {
                     setTeams(data.teams);
                     setDirectMessages(data.directMessages);
                     setUsers(data.users);
+                    if (data.folders) {
+                        setFolders(data.folders);
+                    }
                 } catch (err) {
                     // Token is invalid or expired
                     handleLogout();
@@ -188,7 +195,7 @@ function App() {
     const removeToast = (id: number) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
-    
+
     const handleLogin = async (email: string, password: string) => {
         setError(null);
         try {
@@ -257,7 +264,7 @@ function App() {
         }
     };
 
-    
+
     const handleLogout = async () => {
         setIsLoading(true);
         const token = localStorage.getItem(`pushToken`);
@@ -273,7 +280,7 @@ function App() {
         navigateURL("/");
         setIsLoading(false);
     };
-    
+
     const handleCloseOnboarding = () => {
         setShowOnboarding(false);
     };
@@ -289,11 +296,11 @@ function App() {
             .then(p => setProjects(prev => ({ ...prev, [p.id]: p })))
             .catch(() => addToast('Failed to update project.', 'error'));
     };
-    
+
     const handleCreateProject = async (name: string, description: string, teamId: string) => {
         projectService.create(name, description, teamId)
             .then(({ newProject, updatedTeam }) => {
-                setProjects(prev => ({...prev, [newProject.id]: newProject }));
+                setProjects(prev => ({ ...prev, [newProject.id]: newProject }));
                 setTeams(prev => ({ ...prev, [updatedTeam.id]: updatedTeam }));
                 handleSelectProject(newProject.id);
                 addToast('Project created successfully!', 'success');
@@ -316,7 +323,7 @@ function App() {
             .catch(() => addToast('Failed to delete project.', 'error'));
     };
 
-    const handleNavigate = (page: 'dashboard' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications') => {
+    const handleNavigate = (page: 'dashboard' | 'teams' | 'settings' | 'messages' | 'search' | 'notifications' | 'calendar') => {
         setCurrentPage(page);
         if (page === 'dashboard') {
             //setCurrentProjectId(null);
@@ -325,17 +332,17 @@ function App() {
             navigateURL(`/${page}`);
         }
     };
-    
+
     const handleCreateColumn = async (projectId: string, title: string) => {
         columnService.create(projectId, title)
-            .then(({columns, columnOrder}) => {
+            .then(({ columns, columnOrder }) => {
                 setProjects(prev => ({
-                ...prev,
-                [projectId]: {
-                    ...prev[projectId],
-                    columns,
-                    columnOrder          
-                }
+                    ...prev,
+                    [projectId]: {
+                        ...prev[projectId],
+                        columns,
+                        columnOrder
+                    }
                 }));
                 addToast('Column added!', 'success');
             })
@@ -346,11 +353,11 @@ function App() {
         columnService.move(projectId, newOrder)
             .then(columnOrder => {
                 setProjects(prev => ({
-                ...prev,
-                [projectId]: {
-                    ...prev[projectId],   // keep existing project data
-                    columnOrder,          // update only the column order
-                }
+                    ...prev,
+                    [projectId]: {
+                        ...prev[projectId],   // keep existing project data
+                        columnOrder,          // update only the column order
+                    }
                 }));
                 addToast('Column moved successfully!', 'success');
             })
@@ -392,7 +399,7 @@ function App() {
                         ...prev[projectId],
                         tasks: {
                             ...prev[projectId].tasks,
-                            [newTask.id]: newTask 
+                            [newTask.id]: newTask
                         },
                         columns: {
                             ...prev[projectId].columns,
@@ -418,7 +425,7 @@ function App() {
                         ...prev[projectId],
                         tasks: {
                             ...prev[projectId].tasks,
-                            [newTask.id]: newTask 
+                            [newTask.id]: newTask
                         }
                     }
                 }))
@@ -428,19 +435,19 @@ function App() {
             .catch(() => {
                 addToast('Failed to update task.', 'error');
             })
-        
+
     };
 
     const handleMoveTask = async (projectId: string, taskId: string, toColumnId: string, position: number) => {
         taskService.move(taskId, toColumnId, position)
-            .then(({columns}) => {
+            .then(({ columns }) => {
                 setProjects(prev => ({
-                ...prev,
-                [projectId]: {
-                    ...prev[projectId],     // keep existing project data
-                    columns,                // update only the columns
-                }
-            }));
+                    ...prev,
+                    [projectId]: {
+                        ...prev[projectId],     // keep existing project data
+                        columns,                // update only the columns
+                    }
+                }));
                 addToast('task moved successfully!', 'success');
             })
             .catch(() => addToast('Failed to move task.', 'error'));
@@ -456,23 +463,23 @@ function App() {
 
     const handleCreateComment = async (projectId: string, taskId: string, content: string) => {
         taskService.addComment(taskId, content)
-        .then(newComment => {
-            setProjects(prev => ({
-                ...prev,
-                [projectId]: {
-                    ...prev[projectId],
-                    tasks: {
-                        ...prev[projectId].tasks,
-                        [taskId]: {
-                            ...prev[projectId].tasks[taskId],
-                            comments: [...prev[projectId].tasks[taskId].comments, newComment]
-                        } 
+            .then(newComment => {
+                setProjects(prev => ({
+                    ...prev,
+                    [projectId]: {
+                        ...prev[projectId],
+                        tasks: {
+                            ...prev[projectId].tasks,
+                            [taskId]: {
+                                ...prev[projectId].tasks[taskId],
+                                comments: [...prev[projectId].tasks[taskId].comments, newComment]
+                            }
+                        }
                     }
-                }
-            }))
-            addToast('commented successfully!', 'success');
-        })
-        .catch(() => addToast('Failed to post comment.', 'error'));
+                }))
+                addToast('commented successfully!', 'success');
+            })
+            .catch(() => addToast('Failed to post comment.', 'error'));
     };
 
     const handleUploadTaskAttachment = async (projectId: string, taskId: string, file: File) => {
@@ -486,18 +493,18 @@ function App() {
                             ...prev[projectId].tasks,
                             [taskId]: {
                                 ...prev[projectId].tasks[taskId],
-                                attachments: Array.isArray(newAttachments) ? 
+                                attachments: Array.isArray(newAttachments) ?
                                     [...prev[projectId].tasks[taskId].attachments, ...newAttachments] :
                                     [...prev[projectId].tasks[taskId].attachments, newAttachments]
-                            } 
+                            }
                         }
                     }
                 }))
                 //addToast('Attachment uploaded successfully!', 'success');
                 return newAttachments;
             })
-            .catch((err) => { 
-                addToast('Failed to upload attachment.', 'error'); 
+            .catch((err) => {
+                addToast('Failed to upload attachment.', 'error');
             });
     };
 
@@ -513,14 +520,14 @@ function App() {
                             [taskId]: {
                                 ...prev[projectId].tasks[taskId],
                                 attachments: prev[projectId].tasks[taskId].attachments.filter(att => att.id !== attachmentId)
-                            } 
+                            }
                         }
                     }
                 }))
                 addToast('Attachment deleted.', 'info');
             })
-            .catch(() => { 
-                addToast('Failed to delete attachment.', 'error'); 
+            .catch(() => {
+                addToast('Failed to delete attachment.', 'error');
             });
     };
 
@@ -540,10 +547,10 @@ function App() {
     };
 
 
-    const handleSendMessage = async (projectId: string, content: string) => {
+    const handleSendMessage = async (projectId: string, content: string, attachments?: File[], parentId?: string) => {
         try {
             // Call backend API to save message
-            const savedMessage = await messageService.sendChatMessage(projectId, content);
+            const savedMessage = await messageService.sendChatMessage(projectId, content, attachments, parentId);
             const updatedMessages = [...projects[projectId].chatMessages, savedMessage];
 
             setProjects(prev => ({
@@ -566,7 +573,7 @@ function App() {
         setTaskToOpen(taskId);
         console.log("Selecting task from search:", taskId);
     };
-    
+
     const clearTaskToOpen = () => setTaskToOpen(null);
 
     const handleUpdateUser = (updateUser: User, avatarFile?: File) => {
@@ -580,11 +587,11 @@ function App() {
             })
             .catch(() => addToast('Failed to update profile.', 'error'));
     };
-    
+
     const handleCreateTeam = (name: string, description: string, icon: string) => {
         teamService.create(name, description, icon)
             .then(newTeam => {
-                setTeams(prev => ({...prev, [newTeam.id]: newTeam}));
+                setTeams(prev => ({ ...prev, [newTeam.id]: newTeam }));
                 addToast('Team created!', 'success');
             })
             .catch(() => addToast('Failed to create team.', 'error'));
@@ -593,7 +600,7 @@ function App() {
     const handleUpdateTeam = (updatedTeam: Team) => {
         teamService.update(updatedTeam)
             .then(team => {
-                 setTeams(prev => ({ ...prev, [team.id]: team }));
+                setTeams(prev => ({ ...prev, [team.id]: team }));
             })
             .catch(() => addToast('Failed to update team.', 'error'));
     };
@@ -601,12 +608,12 @@ function App() {
     const handleDeleteTeam = (teamId: string) => {
         teamService.delete(teamId)
             .then(() => {
-                    setTeams(prev => {
+                setTeams(prev => {
                     const updated = { ...prev };
                     delete updated[teamId];
                     return updated;
                 });
-                    addToast('Team deleted.', 'info');
+                addToast('Team deleted.', 'info');
             })
             .catch(() => addToast('Failed to delete team.', 'error'));
     };
@@ -616,10 +623,10 @@ function App() {
         handleNavigate('messages');
     };
 
-    const handleSendDirectMessage = (receiverId: string, content: string) => {
-        messageService.sendDirectMessage(receiverId, content)
+    const handleSendDirectMessage = (receiverId: string, content: string, attachments?: File[], parentId?: string) => {
+        messageService.sendDirectMessage(receiverId, content, attachments, parentId)
             .then(newDm => {
-                 setDirectMessages(prev => ({ ...prev, [newDm.id]: newDm }));
+                setDirectMessages(prev => ({ ...prev, [newDm.id]: newDm }));
             })
             .catch(() => addToast('Failed to send message.', 'error'));
     };
@@ -627,13 +634,13 @@ function App() {
     const handleInviteMember = (teamId: string, email: string) => {
         teamService.invite(teamId, email)
             .then(updatedTeam => {
-                setTeams(prev => ({...prev, [teamId]: updatedTeam }));
+                setTeams(prev => ({ ...prev, [teamId]: updatedTeam }));
                 const invitedUser = Object.values(users).find(u => u.email === email);
                 addToast(`Successfully added ${invitedUser?.name} to ${updatedTeam.name}.`, 'success');
             })
             .catch(err => addToast(err.message, 'error'));
     };
-    
+
     const handleRequestToJoinTeam = (teamId: string) => {
         teamService.requestToJoin(teamId)
             .then((data) => {
@@ -641,27 +648,27 @@ function App() {
             })
             .catch(err => addToast(err.message, 'error'));
     };
-    
+
     const handleManageJoinRequest = (teamId: string, userId: string, action: 'approve' | 'deny') => {
         teamService.manageJoinRequest(teamId, userId, action)
             .then(({ message, team }) => {
                 console.log(team)
-                 setTeams(prev => ({...prev, [teamId]: team }));
-                 addToast(message, 'info');
+                setTeams(prev => ({ ...prev, [teamId]: team }));
+                addToast(message, 'info');
             })
             .catch(err => addToast(err.message, 'error'));
     };
-    
+
     const handleSearchSubmit = (query: string) => {
         setSearchQuery(query);
         handleNavigate('search');
     };
-    
+
     const handleNavigateToTeam = (teamId: string) => {
         setTeamToSelect(teamId);
         handleNavigate('teams');
     };
-    
+
     const clearTeamToSelect = () => setTeamToSelect(null);
 
     const handleViewUser = (user: User) => {
@@ -669,59 +676,91 @@ function App() {
     };
 
     const handleCreateFolder = (name: string) => {
-        // api.createFolder(name)
-        //     .then(newFolder => {
-        //         setFolders(prev => ({...prev, [newFolder.id]: newFolder}));
-        //         addToast('Folder created!', 'success');
-        //     })
-        //     .catch(() => addToast('Failed to create folder.', 'error'));
+        folderService.create(name)
+            .then(newFolder => {
+                setFolders(prev => ({ ...prev, [newFolder.id]: newFolder }));
+                addToast('Folder created!', 'success');
+            })
+            .catch(() => addToast('Failed to create folder.', 'error'));
     };
     const handleDeleteFolder = (folderIdToDelete: string) => {
-        // const originalFolders = folders;
-        // // Optimistic UI update for responsiveness
-        // const updatedFolders = { ...originalFolders };
-        // delete updatedFolders[folderIdToDelete];
-        // setFolders(updatedFolders);
-        // addToast('Folder deleted.', 'info');
-        // // API call to persist the change
-        // api.deleteFolder(folderIdToDelete)
-        //     .catch(() => {
-        //         // Revert state on failure
-        //         setFolders(originalFolders);
-        //         addToast('Failed to delete folder.', 'error');
-        //     });
+        const originalFolders = folders;
+        // Optimistic UI update for responsiveness
+        const updatedFolders = { ...originalFolders };
+        delete updatedFolders[folderIdToDelete];
+        setFolders(updatedFolders);
+        addToast('Folder deleted.', 'info');
+        // API call to persist the change
+        folderService.delete(folderIdToDelete)
+            .catch(() => {
+                // Revert state on failure
+                setFolders(originalFolders);
+                addToast('Failed to delete folder.', 'error');
+            });
     };
-    const handleMoveProject = (projectId: string, newFolderId: string | null, oldFolderId: string | null) => {
-        // if (newFolderId === oldFolderId) return;
-        // const originalFolders = folders;
-        
-        // // Create a deep copy to modify safely
-        // const updatedFolders = JSON.parse(JSON.stringify(originalFolders));
-        // let foldersForApi: Folder[] = [];
-        // // 1. Remove project from its old folder
-        // if (oldFolderId && updatedFolders[oldFolderId]) {
-        //     updatedFolders[oldFolderId].projectIds = updatedFolders[oldFolderId].projectIds.filter(id => id !== projectId);
-        //     foldersForApi.push(updatedFolders[oldFolderId]);
-        // }
-        // // 2. Add project to its new folder
-        // if (newFolderId && updatedFolders[newFolderId]) {
-        //     if (!updatedFolders[newFolderId].projectIds.includes(projectId)) {
-        //         updatedFolders[newFolderId].projectIds.push(projectId);
-        //         if (!foldersForApi.some(f => f.id === newFolderId)) {
-        //              foldersForApi.push(updatedFolders[newFolderId]);
-        //         }
-        //     }
-        // }
-        // // Optimistically update the UI
-        // setFolders(updatedFolders);
-        // // 3. Call the API to persist changes
-        // if (foldersForApi.length > 0) {
-        //     api.updateFolders(foldersForApi)
-        //         .catch(() => {
-        //             setFolders(originalFolders);
-        //             addToast('Failed to move project.', 'error');
-        //         });
-        // }
+    const handleMoveProject = async (projectId: string, newFolderId: string | null, oldFolderId: string | null) => {
+        if (newFolderId === oldFolderId) return;
+        const originalFolders = { ...folders };
+
+        // Optimistic update - update UI immediately
+        const optimisticFolders = JSON.parse(JSON.stringify(folders));
+
+        // Remove from old folder
+        if (oldFolderId && optimisticFolders[oldFolderId]) {
+            optimisticFolders[oldFolderId].projectIds = optimisticFolders[oldFolderId].projectIds.filter((id: string) => id !== projectId);
+        }
+
+        // Add to new folder
+        if (newFolderId && optimisticFolders[newFolderId]) {
+            if (!optimisticFolders[newFolderId].projectIds.includes(projectId)) {
+                optimisticFolders[newFolderId].projectIds.push(projectId);
+            }
+        }
+
+        // Apply optimistic update
+        setFolders(optimisticFolders);
+
+        try {
+            // API calls in background
+            if (oldFolderId && folders[oldFolderId]) {
+                await folderService.moveProject(oldFolderId, projectId, 'remove');
+            }
+            if (newFolderId && folders[newFolderId]) {
+                await folderService.moveProject(newFolderId, projectId, 'add');
+            }
+        } catch (err) {
+            // Revert on failure
+            setFolders(originalFolders);
+            addToast('Failed to move project.', 'error');
+        }
+    };
+
+    const handleReorderFolders = async (folderIds: string[]) => {
+        // Optimistic update - reorder folders immediately in UI
+        const reorderedFolders: { [key: string]: typeof folders[string] } = {};
+        folderIds.forEach(id => {
+            if (folders[id]) {
+                reorderedFolders[id] = folders[id];
+            }
+        });
+        // Add any folders that might not be in the folderIds list (safety)
+        Object.keys(folders).forEach(id => {
+            if (!reorderedFolders[id]) {
+                reorderedFolders[id] = folders[id];
+            }
+        });
+
+        const originalFolders = { ...folders };
+        setFolders(reorderedFolders);
+
+        // Call backend to persist order
+        try {
+            await folderService.reorder(folderIds);
+        } catch (err) {
+            // Revert on failure
+            setFolders(originalFolders);
+            addToast('Failed to reorder folders.', 'error');
+        }
     };
 
     if (isLoading) {
@@ -734,17 +773,17 @@ function App() {
             </div>
         );
     }
-    
+
     if (!currentUser) {
         if (authView === 'landing') {
             return (
-                <LandingPage 
-                    onNavigate={(mode) => setAuthView(mode)} 
+                <LandingPage
+                    onNavigate={(mode) => setAuthView(mode)}
                     isDarkMode={isDarkMode}
                     onToggleTheme={() => setIsDarkMode(!isDarkMode)}
-                    onDemoLogin={() => {}}
+                    onDemoLogin={() => { }}
                 />
-                
+
             );
         }
         return (
@@ -754,21 +793,21 @@ function App() {
                         <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
                     ))}
                 </div>
-                <LoginPage 
-                    onLogin={handleLogin} 
-                    onRegister={handleRegister} 
-                    isDarkMode={isDarkMode} 
-                    onBack={() => setAuthView('landing')} 
-                    initialMode={authView === 'signup' ? 'signup' : 'signin'} 
-                    onToggleTheme={() => setIsDarkMode(!isDarkMode)} 
-                    onNavigateURL={navigateURL} 
+                <LoginPage
+                    onLogin={handleLogin}
+                    onRegister={handleRegister}
+                    isDarkMode={isDarkMode}
+                    onBack={() => setAuthView('landing')}
+                    initialMode={authView === 'signup' ? 'signup' : 'signin'}
+                    onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+                    onNavigateURL={navigateURL}
                 />
             </div>
         );
     }
-    
+
     if (error) {
-         return (
+        return (
             <div className="h-screen w-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-red-500">
                 <p>{error}</p>
             </div>
@@ -800,7 +839,7 @@ function App() {
                     <Toast key={toast.id} message={toast.message} type={toast.type} onClose={() => removeToast(toast.id)} />
                 ))}
             </div>
-            <Sidebar 
+            <Sidebar
                 projects={userProjects}
                 folders={Object.values(folders)}
                 currentProjectId={currentProjectId}
@@ -811,13 +850,14 @@ function App() {
                 onCreateFolder={handleCreateFolder}
                 onDeleteFolder={handleDeleteFolder}
                 onMoveProject={handleMoveProject}
+                onReorderFolders={handleReorderFolders}
                 isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
                 width={sidebarWidth}
                 onResize={setSidebarWidth}
             />
             <div className="flex-1 flex flex-col min-w-0">
-                 <Header 
+                <Header
                     currentProject={currentProject}
                     currentTeam={currentTeamForProject}
                     currentUser={currentUser}
@@ -832,15 +872,16 @@ function App() {
                     onSearchSubmit={handleSearchSubmit}
                     currentPage={currentPage}
                     notifications={userNotifications}
-                 />
-                 <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onSelectTask={handleSelectTaskFromSearch}/></div>}
-                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onCreateSubtask={handleCreateSubtask} onUpdateSubtask={handleUpdateSubtask} onDeleteSubtask={handleDeleteSubtask} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast}/>}
+                />
+                <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+                    {currentPage === 'dashboard' && <div className="overflow-auto"><DashboardPage projects={userProjects} teams={userTeams} currentUser={currentUser} onSelectProject={handleSelectProject} onCreateProject={handleCreateProject} onNavigateToTeam={handleNavigateToTeam} onSelectTask={handleSelectTaskFromSearch} onNavigateToCalendar={() => handleNavigate('calendar')} /></div>}
+                    {currentPage === 'project' && currentProject && currentTeamForProject && <ProjectPage project={currentProject} team={currentTeamForProject} currentUser={currentUser} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject} onCreateColumn={handleCreateColumn} taskToOpen={taskToOpen} onClearTaskToOpen={clearTaskToOpen} onMoveColumn={handleMoveColumn} onSendMessage={handleSendMessage} onCreateTask={handleCreateTask} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onMoveTask={handleMoveTask} onCreateComment={handleCreateComment} onUploadTaskAttachment={handleUploadTaskAttachment} onDeleteTaskAttachment={handleDeleteTaskAttachment} onCreateSubtask={handleCreateSubtask} onUpdateSubtask={handleUpdateSubtask} onDeleteSubtask={handleDeleteSubtask} onUpdateColumn={handleUpdateColumn} onDeleteColumn={handleDeleteColumn} addToast={addToast} />}
                     {currentPage === 'teams' && <div className="flex-1 min-h-0"><TeamsPage currentUser={currentUser} allUsers={users} allTeams={Object.values(teams)} allProjects={projects} onSelectProject={handleSelectProject} onCreateTeam={handleCreateTeam} onUpdateTeam={handleUpdateTeam} onDeleteTeam={handleDeleteTeam} onCreateProject={handleCreateProject} onStartConversation={handleStartConversation} onInviteMember={handleInviteMember} onRequestToJoin={handleRequestToJoinTeam} onManageJoinRequest={handleManageJoinRequest} teamToSelect={teamToSelect} onClearTeamToSelect={clearTeamToSelect} /></div>}
                     {currentPage === 'settings' && <ProfilePage currentUser={currentUser} projects={userProjects} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onUpdateUser={handleUpdateUser} />}
                     {currentPage === 'messages' && <MessagesPage currentUser={currentUser} users={users} directMessages={Object.values(directMessages)} onSendMessage={handleSendDirectMessage} initialPartnerId={currentConversationPartnerId} onNavigateToUser={handleStartConversation} onViewUser={handleViewUser} allUsers={users} allTeams={teams} />}
                     {currentPage === 'search' && <SearchPage query={searchQuery} allProjects={Object.values(projects)} allTeams={Object.values(teams)} allUsers={Object.values(users)} onSelectProject={handleSelectProject} onSelectTask={handleSelectTaskFromSearch} onNavigateToTeam={handleNavigateToTeam} onStartConversation={handleStartConversation} onViewUser={handleViewUser} />}
                     {currentPage === 'notifications' && <NotificationsPage currentUser={currentUser} allUsers={users} notifications={userNotifications} onNotificationsUpdate={setNotifications} />}
+                    {currentPage === 'calendar' && <CalendarPage projects={userProjects} teams={userTeams} onSelectTask={handleSelectTaskFromSearch} onSelectProject={handleSelectProject} />}
                 </main>
             </div>
         </div>

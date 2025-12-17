@@ -13,6 +13,7 @@ interface DashboardPageProps {
     onCreateProject: (name: string, description: string, teamId: string) => void;
     onNavigateToTeam: (teamId: string) => void;
     onSelectTask: (projectId: string, taskId: string) => void;
+    onNavigateToCalendar: () => void;
 }
 
 const StatCard = ({ icon, label, value, colorClass, trend }: { icon: React.ReactNode, label: string, value: number, colorClass: string, trend?: string }) => (
@@ -20,7 +21,7 @@ const StatCard = ({ icon, label, value, colorClass, trend }: { icon: React.React
         <div>
             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{label}</p>
             <p className="text-3xl font-bold text-gray-800 dark:text-white group-hover:scale-105 transition-transform origin-left">{value}</p>
-            {trend && <p className="text-xs text-green-500 mt-1 flex items-center gap-1"><TrendingUp size={10}/> {trend}</p>}
+            {trend && <p className="text-xs text-green-500 mt-1 flex items-center gap-1"><TrendingUp size={10} /> {trend}</p>}
         </div>
         <div className={`p-3 rounded-xl ${colorClass} bg-opacity-20 dark:bg-opacity-20 shadow-sm group-hover:rotate-6 transition-transform`}>
             {icon}
@@ -28,7 +29,7 @@ const StatCard = ({ icon, label, value, colorClass, trend }: { icon: React.React
     </div>
 );
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentUser, onSelectProject, onCreateProject, onNavigateToTeam, onSelectTask }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentUser, onSelectProject, onCreateProject, onNavigateToTeam, onSelectTask, onNavigateToCalendar }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const getTeamForProject = (project: Project): Team | undefined => {
@@ -37,10 +38,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
 
     // Calculate Stats
     const stats = useMemo(() => {
-        const allTasks = projects.flatMap(p => 
+        const allTasks = projects.flatMap(p =>
             Object.values(p.tasks).map((t: Task) => ({ ...t, projectId: p.id, projectName: p.name }))
         );
-        
+
         const totalTasks = allTasks.length;
         const completedTasks = allTasks.filter(t => t.completed).length;
         const overdueTasks = allTasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate) < new Date()).length;
@@ -70,7 +71,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Hello, {currentUser.name}</h1>
                     <p className="text-gray-500 dark:text-gray-400">Overview of your workspace.</p>
                 </div>
-                 <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-brand-600 text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:focus:ring-offset-gray-900 w-full sm:w-auto justify-center transition-transform transform hover:-translate-y-0.5">
+                <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-brand-600 text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 dark:focus:ring-offset-gray-900 w-full sm:w-auto justify-center transition-transform transform hover:-translate-y-0.5">
                     <Plus size={20} className="mr-2" />
                     New Project
                 </button>
@@ -78,35 +79,35 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
 
             {/* Stats Row */}
             <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <StatCard 
-                    icon={<ListTodo className="text-blue-600 dark:text-blue-400" size={24} />} 
-                    label="Total Tasks" 
-                    value={stats.totalTasks} 
-                    colorClass="bg-blue-100 dark:bg-blue-900" 
+                <StatCard
+                    icon={<ListTodo className="text-blue-600 dark:text-blue-400" size={24} />}
+                    label="Total Tasks"
+                    value={stats.totalTasks}
+                    colorClass="bg-blue-100 dark:bg-blue-900"
                 />
-                <StatCard 
-                    icon={<PlayCircle className="text-amber-600 dark:text-amber-400" size={24} />} 
-                    label="In Progress" 
-                    value={stats.inProgressTasks} 
-                    colorClass="bg-amber-100 dark:bg-amber-900" 
+                <StatCard
+                    icon={<PlayCircle className="text-amber-600 dark:text-amber-400" size={24} />}
+                    label="In Progress"
+                    value={stats.inProgressTasks}
+                    colorClass="bg-amber-100 dark:bg-amber-900"
                 />
-                <StatCard 
-                    icon={<CheckCircle className="text-green-600 dark:text-green-400" size={24} />} 
-                    label="Completed" 
-                    value={stats.completedTasks} 
-                    colorClass="bg-green-100 dark:bg-green-900" 
+                <StatCard
+                    icon={<CheckCircle className="text-green-600 dark:text-green-400" size={24} />}
+                    label="Completed"
+                    value={stats.completedTasks}
+                    colorClass="bg-green-100 dark:bg-green-900"
                 />
-                <StatCard 
-                    icon={<AlertCircle className="text-red-600 dark:text-red-400" size={24} />} 
-                    label="Overdue" 
-                    value={stats.overdueTasks} 
-                    colorClass="bg-red-100 dark:bg-red-900" 
+                <StatCard
+                    icon={<AlertCircle className="text-red-600 dark:text-red-400" size={24} />}
+                    label="Overdue"
+                    value={stats.overdueTasks}
+                    colorClass="bg-red-100 dark:bg-red-900"
                 />
-                <StatCard 
-                    icon={<Briefcase className="text-purple-600 dark:text-purple-400" size={24} />} 
-                    label="Projects" 
-                    value={stats.projectCount} 
-                    colorClass="bg-purple-100 dark:bg-purple-900" 
+                <StatCard
+                    icon={<Briefcase className="text-purple-600 dark:text-purple-400" size={24} />}
+                    label="Projects"
+                    value={stats.projectCount}
+                    colorClass="bg-purple-100 dark:bg-purple-900"
                 />
             </section>
 
@@ -126,8 +127,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                 const progress = taskCount > 0 ? (doneCount / taskCount) * 100 : 0;
 
                                 return (
-                                    <div 
-                                        key={project.id} 
+                                    <div
+                                        key={project.id}
                                         onClick={() => onSelectProject(project.id)}
                                         className="glass-panel rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer p-6 flex flex-col border border-white/50 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-700 transform hover:-translate-y-1 group"
                                         style={{ animationDelay: `${0.1 + index * 0.05}s` }}
@@ -146,7 +147,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                                 <ArrowRight size={18} className="-rotate-45 group-hover:rotate-0 transition-transform duration-300" />
                                             </div>
                                         </div>
-                                        
+
                                         <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 flex-grow line-clamp-2 leading-relaxed">
                                             {project.description || "No description provided."}
                                         </p>
@@ -157,8 +158,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                                 <span>{Math.round(progress)}%</span>
                                             </div>
                                             <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-brand-500'}`} 
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-green-500' : 'bg-brand-500'}`}
                                                     style={{ width: `${progress}%` }}
                                                 ></div>
                                             </div>
@@ -205,7 +206,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {teams.length > 0 ? teams.map((team) => (
-                                <div 
+                                <div
                                     key={team.id}
                                     onClick={() => onNavigateToTeam(team.id)}
                                     className="glass-panel rounded-lg p-4 flex items-center gap-4 cursor-pointer hover:bg-white/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
@@ -219,7 +220,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                     </div>
                                 </div>
                             )) : (
-                                 <div className="col-span-full text-center py-8 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                                <div className="col-span-full text-center py-8 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
                                     <Users size={24} className="mx-auto text-gray-400 mb-2" />
                                     <p className="text-sm text-gray-500 dark:text-gray-400">You haven't joined any teams yet.</p>
                                 </div>
@@ -243,10 +244,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                         today.setHours(0, 0, 0, 0);
                                         const isOverdue = dueDate < today;
                                         const daysLeft = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-                                        
+
                                         let dueLabel = '';
                                         let dueColor = '';
-                                        
+
                                         if (isOverdue) {
                                             dueLabel = 'Overdue';
                                             dueColor = 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400';
@@ -262,8 +263,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                         }
 
                                         return (
-                                            <div 
-                                                key={task.id} 
+                                            <div
+                                                key={task.id}
                                                 onClick={() => onSelectTask(task.projectId, task.id)}
                                                 className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group block"
                                             >
@@ -295,7 +296,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
                                 </div>
                             )}
                             <div className="p-3 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 text-center">
-                                <button className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">View Calendar</button>
+                                <button onClick={onNavigateToCalendar} className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">View Calendar</button>
                             </div>
                         </div>
                     </section>
@@ -303,7 +304,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ projects, teams, currentU
             </div>
 
             {isCreateModalOpen && (
-                <CreateProjectModal 
+                <CreateProjectModal
                     onClose={() => setIsCreateModalOpen(false)}
                     onCreate={onCreateProject}
                     teams={teams}

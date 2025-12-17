@@ -14,13 +14,13 @@ import uuid
 
 from .models import (
     Team, TeamMember, Project, Column, Task, Subtask, Attachment, Comment, ChatMessage, DirectMessage,
-    PushToken, Notification
+    PushToken, Notification, Folder
 )
 from .serializers import (
     UserSerializer, RegisterSerializer, TeamSerializer, NestedUserSerializer, ProjectSerializer,
     ColumnSerializer, TaskSerializer, SubtaskSerializer, AttachmentSerializer,
     CommentSerializer, ChatMessageSerializer, DirectMessageSerializer,
-    PushTokenSerializer, NotificationSerializer
+    PushTokenSerializer, NotificationSerializer, FolderSerializer
 )
 from .permissions import IsTeamAdmin
 from rest_framework.permissions import IsAuthenticated
@@ -187,7 +187,6 @@ class TeamViewSet(viewsets.ModelViewSet):
 
 
 DEFAULT_COLUMNS = ["To Do", "In Progress", "Done"]
-
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
@@ -249,20 +248,38 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not content:
             return Response({"error": "Message content required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Handle reply_to
+        reply_to_id = request.data.get("replyToId")
+        reply_to = None
+        if reply_to_id:
+            try:
+                reply_to = ChatMessage.objects.get(id=reply_to_id, project=project)
+            except ChatMessage.DoesNotExist:
+                return Response({"error": "Reply message not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle file uploads
+        attachments = []
+        files = request.FILES.getlist('files')
+        for f in files:
+            # save to default storage under attachments/
+            unique_name = f"{uuid.uuid4().hex}_{f.name}"
+            rel_path = os.path.join('attachments', unique_name)
+            saved_path = default_storage.save(rel_path, f)
+
+            att = Attachment.objects.create(name=f.name, url=saved_path)
+            attachments.append(str(att.id))
+
         message = ChatMessage.objects.create(
             project=project,
             author=request.user,
-            content=content
+            content=content,
+            attachments=list(dict.fromkeys(attachments)),
+            reply_to=reply_to
         )
 
-        # Return the saved message
-        return Response({
-            "id": str(message.id),
-            "projectId": str(project.id),
-            "author": {"id": message.author.id, "name": message.author.name, "avatarUrl": str(message.author.avatar)},
-            "content": message.content,
-            "timestamp": message.timestamp
-        }, status=status.HTTP_201_CREATED)
+        # Return serialized message
+        serializer = ChatMessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ColumnViewSet(viewsets.ModelViewSet):
@@ -382,8 +399,6 @@ class ColumnViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all().select_related("project")
     serializer_class = TaskSerializer
@@ -416,7 +431,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             return Response(self.get_serializer(task).data, status=status.HTTP_201_CREATED)
 
 
-    @action(detail=True, methods=["put"], url_path="move")
+    @action(detail=True, methods=["patch"], url_path="move")
     def move(self, request, pk=None):
         task = self.get_object()
         to_column_id = request.data.get("toColumnId")
@@ -600,27 +615,6 @@ class AttachmentViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class ChatMessageViewSet(viewsets.ModelViewSet):
-    queryset = ChatMessage.objects.all()
-    serializer_class = ChatMessageSerializer
-    permission_classes = [IsAuthenticated]
-
-
-class DirectMessageViewSet(viewsets.ModelViewSet):
-    queryset = DirectMessage.objects.all()
-    serializer_class = DirectMessageSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
-
-
 class PushTokenViewSet(viewsets.ModelViewSet):
     queryset = PushToken.objects.all()
     serializer_class = PushTokenSerializer
@@ -667,23 +661,191 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
 
-# Bundled data endpoint
-from rest_framework.views import APIView
-
-class AllDataView(APIView):
+class FolderViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing user folders that organize projects."""
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
     permission_classes = [IsAuthenticated]
-    def get(self, request):
-        users = UserSerializer(User.objects.all(), many=True).data
-        teams = TeamSerializer(Team.objects.all(), many=True).data
-        projects = ProjectSerializer(Project.objects.all(), many=True).data
-        direct_messages = DirectMessageSerializer(DirectMessage.objects.all(), many=True).data
-        notifications = NotificationSerializer(Notification.objects.all(), many=True).data
 
-        # format like your frontend expects
+    def get_queryset(self):
+        # Only return folders belonging to the current user
+        return Folder.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # Automatically set the user to the current user
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="move-project")
+    def move_project(self, request, pk=None):
+        """Add or remove a project from a folder.
+        Body: { "projectId": "uuid", "action": "add" | "remove" }
+        """
+        folder = self.get_object()
+        project_id = request.data.get("projectId")
+        action = request.data.get("action", "add")
+
+        if not project_id:
+            return Response({"error": "projectId required"}, status=400)
+
+        if action == "add":
+            if project_id not in folder.project_ids:
+                folder.project_ids.append(project_id)
+                folder.save()
+        elif action == "remove":
+            if project_id in folder.project_ids:
+                folder.project_ids.remove(project_id)
+                folder.save()
+        else:
+            return Response({"error": "action must be 'add' or 'remove'"}, status=400)
+
+        return Response(FolderSerializer(folder).data)
+
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder(self, request):
+        """Reorder folders based on array of folder IDs.
+        Body: { "folderIds": ["uuid1", "uuid2", "uuid3", ...] }
+        """
+        folder_ids = request.data.get("folderIds", [])
+        
+        if not isinstance(folder_ids, list):
+            return Response({"error": "folderIds must be an array"}, status=400)
+
+        # Update order for each folder
+        for index, folder_id in enumerate(folder_ids):
+            try:
+                folder = Folder.objects.get(id=folder_id, user=request.user)
+                folder.order = index
+                folder.save(update_fields=["order"])
+            except Folder.DoesNotExist:
+                pass  # Skip folders that don't exist or don't belong to user
+
+        # Return updated folders
+        folders = Folder.objects.filter(user=request.user)
+        return Response(FolderSerializer(folders, many=True).data)
+
+
+class DirectMessageViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing direct messages between users."""
+    queryset = DirectMessage.objects.all()
+    serializer_class = DirectMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return messages sent to or by the current user
+        return DirectMessage.objects.filter(
+            sender=self.request.user
+        ) | DirectMessage.objects.filter(
+            receiver=self.request.user
+        )
+
+    def create(self, request, *args, **kwargs):
+        receiver_id = request.data.get("receiverId")
+        content = request.data.get("content")
+
+        if not receiver_id or not content:
+            return Response({"error": "receiverId and content required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            receiver = User.objects.get(id=receiver_id)
+        except User.DoesNotExist:
+            return Response({"error": "Receiver not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Handle reply_to
+        reply_to_id = request.data.get("replyToId")
+        reply_to = None
+        if reply_to_id:
+            try:
+                reply_to = DirectMessage.objects.get(id=reply_to_id)
+                # Verify the reply message is between the same users
+                if not ((reply_to.sender == request.user and reply_to.receiver == receiver) or
+                        (reply_to.sender == receiver and reply_to.receiver == request.user)):
+                    return Response({"error": "Invalid reply message"}, status=status.HTTP_400_BAD_REQUEST)
+            except DirectMessage.DoesNotExist:
+                return Response({"error": "Reply message not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle file uploads
+        attachments = []
+        files = request.FILES.getlist('files')
+        for f in files:
+            # save to default storage under attachments/
+            unique_name = f"{uuid.uuid4().hex}_{f.name}"
+            rel_path = os.path.join('attachments', unique_name)
+            saved_path = default_storage.save(rel_path, f)
+
+            att = Attachment.objects.create(name=f.name, url=saved_path)
+            attachments.append(str(att.id))
+
+        message = DirectMessage.objects.create(
+            sender=request.user,
+            receiver=receiver,
+            content=content,
+            attachments=list(dict.fromkeys(attachments)),
+            reply_to=reply_to
+        )
+
+        # Return serialized message
+        serializer = DirectMessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AllDataView(viewsets.ViewSet):
+    # This is a hack to create an endpoint that returns all data for the current user
+    # GET /api/all-data/
+    # Returns:
+    # {
+    #   "user": {...},
+    #   "teams": {...},
+    #   "projects": {...},
+    #   "users": {...},
+    #   "directMessages": [...],
+    #   "folders": [...]
+    # }
+    def list(self, request):
+        user = request.user
+        teams = {}
+        projects = {}
+        users_dict = {}
+
+        # 1. Get all teams the user is a member of
+        team_memberships = TeamMember.objects.filter(user=user)
+        for tm in team_memberships:
+            team = tm.team
+            teams[str(team.id)] = TeamSerializer(team).data
+
+        # 2. Get all projects in those teams
+        all_projects = Project.objects.filter(team__in=teams.keys())
+        for proj in all_projects:
+            projects[str(proj.id)] = ProjectSerializer(proj).data
+
+        # 3. All users across these teams
+        all_team_members = TeamMember.objects.filter(team__in=teams.keys()).select_related('user')
+        for tm in all_team_members:
+            user_obj = tm.user
+            users_dict[str(user_obj.id)] = UserSerializer(user_obj).data
+
+        # 4. All direct messages
+        direct_messages = DirectMessage.objects.filter(
+            sender=user
+        ) | DirectMessage.objects.filter(
+            receiver=user
+        )
+        dm_list = {str(dm.id): DirectMessageSerializer(dm).data for dm in direct_messages.order_by('timestamp')}
+
+        # 5. All notifications
+        notifications = Notification.objects.filter(user=user)
+        notifications_list = {str(n.id): NotificationSerializer(n).data for n in notifications}
+
+        # 6. All folders
+        folders = Folder.objects.filter(user=user)
+        folders_list = {str(f.id): FolderSerializer(f).data for f in folders}
+        
         return Response({
-            "users": {u["id"]: u for u in users},
-            "teams": {t["id"]: t for t in teams},
-            "projects": {p["id"]: p for p in projects},
-            "directMessages": {dm["id"]: dm for dm in direct_messages},
-            "notifications": {n["id"]: n for n in notifications}
+            "user": UserSerializer(user).data,
+            "teams": teams,
+            "projects": projects,
+            "users": users_dict,
+            "notifications": notifications_list,
+            "directMessages": dm_list,
+            "folders": folders_list,
         })
+

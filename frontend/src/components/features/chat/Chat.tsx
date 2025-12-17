@@ -4,12 +4,12 @@ import { Send, ChevronsRight, MessageSquare, ChevronsLeft, Paperclip, Loader2, C
 import type { ChatMessage, User, Attachment } from '@/types';
 import Avatar from '@components/common/Avatar';
 import Spinner from '@components/common/Spinner'; // Re-use Spinner for loading
+import { API_BASE_URL, API_URL } from '@/utils';
 
 interface ChatProps {
     messages: ChatMessage[];
     currentUser: User;
-    // FIX: Updated onSendMessage to return Promise<void>
-    onSendMessage: (content: string, attachments?: Attachment[], parentId?: string) => void; 
+    onSendMessage: (content: string, attachments?: File[], parentId?: string) => void;
     isCollapsed: boolean;
     onToggleCollapse: () => void;
     width: number;
@@ -18,30 +18,6 @@ interface ChatProps {
 
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 500;
-
-// Utility to convert File to Attachment for mock API
-const fileToAttachment = (file: File): Attachment => ({
-    id: `file-${Date.now()}-${file.name}`,
-    name: file.name,
-    url: URL.createObjectURL(file), // Create a blob URL for preview
-    createdAt: new Date().toISOString(),
-});
-
-// Helper to format relative time (e.g., "10:30 AM", "Yesterday", "Mon")
-const formatMessageTime = (isoString: string) => {
-    const date = new Date(isoString);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
-    
-    if (isToday) {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (isYesterday) {
-        return 'Yesterday';
-    } else {
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
-};
 
 // Helper to check if two dates are different days
 const isDifferentDay = (d1: string, d2: string) => {
@@ -71,10 +47,10 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
         if ((!newMessage.trim() && selectedFiles.length === 0) || isSendingMessage) return;
 
         setIsSendingMessage(true);
-        const attachments = selectedFiles.map(fileToAttachment);
         const parentId = replyingToMessage?.id;
 
-        onSendMessage(newMessage.trim(), attachments, parentId); // Await the send operation
+        const files = Array.from(selectedFiles);
+        onSendMessage(newMessage.trim(), files, parentId); // Await the send operation
         setNewMessage('');
         setSelectedFiles([]);
         setReplyingToMessage(null);
@@ -90,7 +66,7 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
             handleSend();
         }
     };
-    
+
     const handleMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
         setIsResizing(true);
@@ -111,7 +87,7 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
         };
-        
+
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
         document.addEventListener('mousemove', handleMouseMove);
@@ -138,12 +114,12 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
     };
 
     return (
-        <div 
+        <div
             className={`bg-white dark:bg-gray-800 border-l dark:border-gray-700 flex flex-col ${isResizing ? '' : 'transition-all duration-300 ease-in-out'} relative flex-shrink-0`}
             style={{ width: isCollapsed ? 64 : width }}
         >
-            <button 
-                onClick={onToggleCollapse} 
+            <button
+                onClick={onToggleCollapse}
                 className="absolute top-1/2 -translate-y-1/2 left-0 -translate-x-1/2 h-16 w-5 flex items-center justify-center bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 z-30 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-sm hover:shadow-md"
                 aria-label={isCollapsed ? "Expand chat" : "Collapse chat"}
             >
@@ -157,13 +133,13 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-white/50 dark:bg-gray-900/50">
                         {messages.length === 0 && (
-                             <p className="text-center text-gray-500 dark:text-gray-400 italic">No messages yet. Start the conversation!</p>
+                            <p className="text-center text-gray-500 dark:text-gray-400 italic">No messages yet. Start the conversation!</p>
                         )}
                         {messages.map((msg, index) => {
                             const isCurrentUser = msg.author.id === currentUser.id;
-                            const parentMessage = getParentMessageSnippet(msg.parentId);
+                            const parentMessage = getParentMessageSnippet(msg.replyTo?.id);
                             const formattedTime = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            
+
                             // Date Separator Logic
                             const prevMsg = messages[index - 1];
                             const showDateSeparator = !prevMsg || isDifferentDay(prevMsg.timestamp, msg.timestamp);
@@ -184,46 +160,43 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                                         <div className={`flex flex-col max-w-[95%] sm:max-w-[90%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
                                             {/* Reply snippet */}
                                             {parentMessage && (
-                                                <div 
-                                                    className={`mb-1 text-xs px-3 py-1.5 rounded-lg border opacity-80 cursor-pointer ${
-                                                        isCurrentUser 
-                                                            ? 'bg-primary-50 border-primary-100 text-primary-800 dark:bg-primary-900/20 dark:border-primary-800 dark:text-primary-300 mr-1' 
-                                                            : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 ml-1'
-                                                    }`}
+                                                <div
+                                                    className={`mb-1 text-xs px-3 py-1.5 rounded-lg border opacity-80 cursor-pointer ${isCurrentUser
+                                                        ? 'bg-primary-50 border-primary-100 text-primary-800 dark:bg-primary-900/20 dark:border-primary-800 dark:text-primary-300 mr-1'
+                                                        : 'bg-gray-100 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 ml-1'
+                                                        }`}
                                                 >
                                                     <span className="font-bold mr-1">{parentMessage.author.name}:</span>
-                                                    <span className="line-clamp-1">{parentMessage.content}</span>
+                                                    <span className="line-clamp-1 break-all">{parentMessage.content}</span>
                                                 </div>
                                             )}
 
                                             {/* Message Bubble */}
                                             <div className="relative">
-                                                <div 
-                                                    className={`px-3 py-0.5 pt-2 shadow-sm text-sm relative ${
-                                                        isCurrentUser 
-                                                            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-2xl rounded-tr-none' 
-                                                            : 'pl-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-none'
-                                                    }`}
+                                                <div
+                                                    className={`px-3 py-0.5 pt-2 shadow-sm text-sm relative ${isCurrentUser
+                                                        ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-2xl rounded-tr-none'
+                                                        : 'pl-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-none'
+                                                        }`}
                                                 >
                                                     {!isCurrentUser && (msg.author.name && (
                                                         <span className="block text-xs font-semibold mb-0.5 text-gray-600 dark:text-gray-300">{msg.author.name}</span>
                                                     ))}
                                                     <p className="whitespace-pre-wrap break-all leading-relaxed">{msg.content}</p>
-                                                    
+
                                                     {/* Attachments */}
                                                     {msg.attachments && msg.attachments.length > 0 && (
                                                         <div className="mt-2 space-y-1.5">
                                                             {msg.attachments.map(att => (
-                                                                <a 
-                                                                    key={att.id} 
-                                                                    href={att.url} 
-                                                                    target="_blank" 
-                                                                    rel="noopener noreferrer" 
-                                                                    className={`flex items-center gap-2 p-2 rounded-lg text-xs transition-colors ${
-                                                                        isCurrentUser 
-                                                                            ? 'bg-white/10 hover:bg-white/20 text-white' 
-                                                                            : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
-                                                                    }`}
+                                                                <a
+                                                                    key={att.name}
+                                                                    href={`${API_URL}/database/media/${att.url}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className={`flex items-center gap-2 p-2 rounded-lg text-xs transition-colors ${isCurrentUser
+                                                                        ? 'bg-white/10 hover:bg-white/20 text-white'
+                                                                        : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
+                                                                        }`}
                                                                 >
                                                                     <div className={`p-1.5 rounded ${isCurrentUser ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-600'}`}>
                                                                         <Paperclip size={12} />
@@ -240,11 +213,10 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                                                 </div>
 
                                                 {/* Hover Actions */}
-                                                <button 
+                                                <button
                                                     onClick={() => setReplyingToMessage(msg)}
-                                                    className={`absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-primary-600 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 ${
-                                                        isCurrentUser ? '-left-10' : '-right-10'
-                                                    }`}
+                                                    className={`absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-primary-600 shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 ${isCurrentUser ? '-left-10' : '-right-10'
+                                                        }`}
                                                     title="Reply"
                                                 >
                                                     <CornerDownLeft size={14} />
@@ -281,7 +253,7 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                             </div>
                         )}
                         <div className="relative flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-0.5 rounded-2xl shadow-inner focus-within:ring-2 focus-within:ring-primary-500/50 transition-shadow">
-                            <button 
+                            <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="p-2.5 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 rounded-xl transition-colors flex-shrink-0"
                                 title="Attach files"
@@ -295,7 +267,7 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                                 onChange={handleFileSelect}
                                 className="hidden"
                             />
-                            
+
                             <textarea
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
@@ -305,14 +277,13 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                                 className="flex-1 max-h-32 py-2.5 bg-transparent border-none focus:ring-0 outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none custom-scrollbar"
                                 style={{ minHeight: '44px' }}
                             />
-                            
-                            <button 
-                                onClick={handleSend} 
-                                className={`p-2 mr-1.5 rounded-xl transition-all duration-200 flex-shrink-0 ${
-                                    (!newMessage.trim() && selectedFiles.length === 0) || isSendingMessage
-                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                                        : 'bg-primary-600 text-white hover:bg-primary-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
-                                }`}
+
+                            <button
+                                onClick={handleSend}
+                                className={`p-2 mr-1.5 rounded-xl transition-all duration-200 flex-shrink-0 ${(!newMessage.trim() && selectedFiles.length === 0) || isSendingMessage
+                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                                    : 'bg-primary-600 text-white hover:bg-primary-700 shadow-md hover:shadow-lg transform hover:-translate-y-0.5'
+                                    }`}
                                 disabled={(!newMessage.trim() && selectedFiles.length === 0) || isSendingMessage}
                             >
                                 {isSendingMessage ? <Spinner className="w-4 h-4" /> : <Send size={18} className={newMessage.trim() ? "ml-0.5" : ""} />}
@@ -322,17 +293,17 @@ const Chat: React.FC<ChatProps> = ({ messages, currentUser, onSendMessage, isCol
                             <p className="text-[10px] text-gray-400 dark:text-gray-500">Press Enter to send, Shift + Enter for new line</p>
                         </div>
                     </div>
-                    <div 
+                    <div
                         onMouseDown={handleMouseDown}
                         className="absolute top-0 left-0 h-full w-1.5 cursor-col-resize group"
                     >
-                         <div className="w-full h-full bg-transparent group-hover:bg-primary-500/50 transition-colors duration-200"></div>
+                        <div className="w-full h-full bg-transparent group-hover:bg-primary-500/50 transition-colors duration-200"></div>
                     </div>
                 </>
             ) : (
-                 <div className="flex flex-col items-center p-2 pt-6">
-                     <MessageSquare size={24} />
-                 </div>
+                <div className="flex flex-col items-center p-2 pt-6">
+                    <MessageSquare size={24} />
+                </div>
             )}
         </div>
     );

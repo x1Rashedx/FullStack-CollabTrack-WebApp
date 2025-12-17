@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  DndContext,
-  rectIntersection,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragStartEvent,
-  DragOverEvent,
-  DragOverlay,
+    DndContext,
+    rectIntersection,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+    DragOverEvent,
+    DragOverlay,
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { Columns, Calendar as CalendarIcon, PieChart, List, Info, Filter, ChevronDown, LayoutGrid, Plus } from 'lucide-react';
@@ -37,15 +37,18 @@ interface ProjectPageProps {
     onMoveColumn: (projectId: string, newOrder: string[]) => void;
     onDeleteColumn: (columnId: string) => void;
 
-    onSendMessage: (projectId: string, content: string) => void;
+    onSendMessage: (projectId: string, content: string, attachments?: File[], parentId?: string) => void;
 
     onCreateTask: (projectId: string, newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => Promise<Task>;
     onUpdateTask: (projectId: string, taskId: string, updatedTask: Task) => void;
     onDeleteTask: (taskId: string) => void;
     onMoveTask: (projectId: string, taskId: string, toColumnId: string, position?: number) => void;
+
     onCreateComment: (projectId: string, taskId: string, content: string) => void;
+
     onUploadTaskAttachment: (projectId: string, taskId: string, file: File) => Promise<Attachment>;
     onDeleteTaskAttachment: (projectId: string, taskId: string, attachmentId: string) => Promise<void>;
+
     onCreateSubtask: (projectId: string, taskId: string, title: string) => Promise<void>;
     onUpdateSubtask: (projectId: string, taskId: string, subtaskId: string, data: Partial<Subtask>) => Promise<void>;
     onDeleteSubtask: (projectId: string, taskId: string, subtaskId: string) => Promise<void>;
@@ -126,21 +129,21 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
-        activationConstraint: {
-            distance: 8,
-        },
+            activationConstraint: {
+                distance: 8,
+            },
         })
     );
 
     // --- Filter and Sort Logic ---
     const processedTasksMap = useMemo(() => {
         const map: { [key: string]: Task[] } = {};
-        
+
         columnOrder.forEach(colId => {
             const col = columns[colId];
             if (!col) return;
 
-        let colTasks = col.taskIds.map(id => tasks[id]).filter(Boolean);
+            let colTasks = col.taskIds.map(id => tasks[id]).filter(Boolean);
             // 1. Filter
             colTasks = colTasks.filter(task => {
                 // Search
@@ -183,10 +186,10 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     }
                 });
             }
-            
+
             map[colId] = colTasks;
         });
-        
+
         return map;
     }, [tasks, columns, columnOrder, filters, sortBy]);
 
@@ -238,15 +241,15 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
     const handleDragOver = (event: DragOverEvent) => {
         const { over } = event;
         if (activeDragType === 'task' && over) {
-        const overId = over.id as string;
-        const overIsColumn = over.data.current?.type === 'column';
-        const overColumn = overIsColumn ? overId : Object.values(columns).find(col => col.taskIds.includes(overId))?.id;
-        
-        if (overColumn) {
-            setOverColumnId(overColumn);
-        } else {
-            setOverColumnId(null);
-        }
+            const overId = over.id as string;
+            const overIsColumn = over.data.current?.type === 'column';
+            const overColumn = overIsColumn ? overId : Object.values(columns).find(col => col.taskIds.includes(overId))?.id;
+
+            if (overColumn) {
+                setOverColumnId(overColumn);
+            } else {
+                setOverColumnId(null);
+            }
         }
     };
 
@@ -281,64 +284,64 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
 
         // Handle Task Dragging
         if (active.data.current?.type === 'task') {
-        const startColumnId = Object.keys(columns).find(id => columns[id].taskIds.includes(activeId));
-                
-        let endColumnId = over.data.current?.type === 'column' ? overId : null;
-        if (!endColumnId) {
-            endColumnId = Object.keys(columns).find(id => columns[id].taskIds.includes(overId));
-        }
+            const startColumnId = Object.keys(columns).find(id => columns[id].taskIds.includes(activeId));
 
-        if (!startColumnId || !endColumnId) {
-            return; // Abort if columns aren't found
-        }
-
-        // Create new state immutably
-        const newColumns = JSON.parse(JSON.stringify(columns));
-        const startCol = newColumns[startColumnId];
-        const endCol = newColumns[endColumnId];
-
-        const oldIndex = startCol.taskIds.indexOf(activeId);
-        const newIndex = endCol.taskIds.indexOf(overId);
-
-        if (startColumnId === endColumnId) {
-            // Reordering within the same column
-
-            if (isSorted) return; // Prevent reordering when sorted
-            
-            // Only move if dropping on a different task
-            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-                startCol.taskIds = arrayMove(startCol.taskIds, oldIndex, newIndex);
-            } else {
-                return; // No change needed
+            let endColumnId = over.data.current?.type === 'column' ? overId : null;
+            if (!endColumnId) {
+                endColumnId = Object.keys(columns).find(id => columns[id].taskIds.includes(overId));
             }
-        } else {
+
+            if (!startColumnId || !endColumnId) {
+                return; // Abort if columns aren't found
+            }
+
+            // Create new state immutably
+            const newColumns = JSON.parse(JSON.stringify(columns));
+            const startCol = newColumns[startColumnId];
+            const endCol = newColumns[endColumnId];
+
+            const oldIndex = startCol.taskIds.indexOf(activeId);
+            const newIndex = endCol.taskIds.indexOf(overId);
+
+            if (startColumnId === endColumnId) {
+                // Reordering within the same column
+
+                if (isSorted) return; // Prevent reordering when sorted
+
+                // Only move if dropping on a different task
+                if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                    startCol.taskIds = arrayMove(startCol.taskIds, oldIndex, newIndex);
+                } else {
+                    return; // No change needed
+                }
+            } else {
                 // Moving to a different column
                 // Remove from start column
                 const taskIndex = startCol.taskIds.indexOf(activeId);
                 startCol.taskIds.splice(taskIndex, 1);
 
-            // If sorted, just append to end (or beginning), visually it will sort itself
+                // If sorted, just append to end (or beginning), visually it will sort itself
                 if (isSorted) {
-                        endCol.taskIds.push(activeId);
+                    endCol.taskIds.push(activeId);
                 } else {
                     // Add to end column
-                    const newIndex = over.data.current?.type === 'task' 
-                        ? endCol.taskIds.indexOf(overId) 
+                    const newIndex = over.data.current?.type === 'task'
+                        ? endCol.taskIds.indexOf(overId)
                         : endCol.taskIds.length; // Drop at the end if dropping on column
                     endCol.taskIds.splice(newIndex, 0, activeId);
                 }
-        }
+            }
 
 
-        onMoveTask(project.id, activeId, endColumnId, newIndex)
-        setColumns(newColumns)
+            onMoveTask(project.id, activeId, endColumnId, newIndex)
+            setColumns(newColumns)
         }
     };
 
     const handleTaskClick = (task: Task) => {
         setSelectedTask(task);
     };
-    
+
     const handleCloseTaskModal = () => {
         setSelectedTask(null);
     };
@@ -348,12 +351,12 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         setCreateTaskModalOpen(false)
         return p;
     };
-    
+
     const handleUpdateTask = (updatedTask: Task) => {
         setTasks(prev => ({ ...prev, [updatedTask.id]: updatedTask }));
         onUpdateTask(project.id, updatedTask.id, updatedTask)
     };
-    
+
     const handleDeleteTask = (taskId: string) => {
         const newTasks = { ...tasks };
         delete newTasks[taskId];
@@ -397,23 +400,23 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         setColumnForNewTask(columnId);
         setCreateTaskModalOpen(true);
     };
-    
-    const handleSendMessage = (content: string) => {
-        onSendMessage(project.id, content);
+
+    const handleSendMessage = (content: string, attachments?: File[], parentId?: string) => {
+        onSendMessage(project.id, content, attachments, parentId);
     };
-    
+
     const handleCreateColumn = (title: string) => {
         onCreateColumn(project.id, title);
     }
 
     const handleUpdateColumn = (columnId: string, newTitle: string) => {
-            const newColumns = {
-                ...columns,
-                [columnId]: { ...columns[columnId], title: newTitle },
-            };
-            setColumns(newColumns);
-            onUpdateColumn(project.id, columnId, newTitle);
+        const newColumns = {
+            ...columns,
+            [columnId]: { ...columns[columnId], title: newTitle },
         };
+        setColumns(newColumns);
+        onUpdateColumn(project.id, columnId, newTitle);
+    };
 
     const requestDeleteColumn = (columnId: string) => {
         if (columnOrder.length <= 1) {
@@ -429,10 +432,10 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         const tasksToMove = newColumns[columnToDelete].taskIds;
         delete newColumns[columnToDelete];
         const newColumnOrder = columnOrder.filter(id => id !== columnToDelete);
-        
+
         const targetColumnId = newColumnOrder[0];
         newColumns[targetColumnId].taskIds = [...newColumns[targetColumnId].taskIds, ...tasksToMove];
-        
+
         setColumns(newColumns);
         setColumnOrder(newColumnOrder);
         onDeleteColumn(columnToDelete);
@@ -448,7 +451,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
         <div className="flex-1 flex flex-col min-h-0 bg-brand-100/25 dark:bg-gray-900"> {/* Added background & blur here */}
 
             {/* --- 1. Project Hero Header --- */}
-            <div className="glass bg-white dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 z-20 shadow-sm relative overflow-hidden">
+            <div className="glass bg-white dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0 z-10 shadow-sm relative overflow-hidden">
 
                 <div className="flex flex-col gap-2 relative z-10">
                     <div className="flex items-center gap-4">
@@ -477,7 +480,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Overdue</p>
                         </div>
                     </div>
-                    
+
                     <div className="flex flex-col items-end gap-2">
                         <div className="flex -space-x-2">
                             {projectMembers.slice(0, 5).map(m => (
@@ -516,11 +519,10 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                         <button
                             key={tab.id}
                             onClick={() => setView(tab.id as any)}
-                            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                                view === tab.id
-                                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                            }`}
+                            className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${view === tab.id
+                                ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
+                                }`}
                         >
                             <tab.icon size={16} />
                             <span className="hidden sm:inline">{tab.label}</span>
@@ -531,13 +533,12 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                 <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                     {(view === 'board' || view === 'calendar' || view === 'list') && (
                         <>
-                            <button 
+                            <button
                                 onClick={() => setShowFilters(!showFilters)}
-                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${
-                                    hasActiveFilters 
-                                        ? 'bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-200' 
-                                        : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
+                                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200 ${hasActiveFilters
+                                    ? 'bg-brand-50 border-brand-200 text-brand-700 dark:bg-brand-900/30 dark:border-brand-800 dark:text-brand-200'
+                                    : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                    }`}
                             >
                                 <div className="relative">
                                     <Filter size={16} />
@@ -551,9 +552,9 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                             <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
                         </>
                     )}
-                    
-                    <button 
-                        onClick={() => {setColumnForNewTask(columnOrder[0]); setCreateTaskModalOpen(true)} }
+
+                    <button
+                        onClick={() => { setColumnForNewTask(columnOrder[0]); setCreateTaskModalOpen(true) }}
                         className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all transform hover:scale-105 active:scale-95"
                     >
                         <Plus size={18} />
@@ -561,15 +562,14 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     </button>
                 </div>
             </div>
-            
+
             {/* Filter Drawer */}
-            <div 
-                className={`grid transition-[grid-template-rows] duration-300 ease-in-out border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 z-10 backdrop-blur-sm ${
-                    showFilters ? 'grid-rows-[1fr]' : 'grid-rows-[0fr] border-none'
-                }`}
+            <div
+                className={`grid transition-[grid-template-rows] duration-300 ease-in-out border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 z-10 backdrop-blur-sm ${showFilters ? 'grid-rows-[1fr]' : 'grid-rows-[0fr] border-none'
+                    }`}
             >
                 <div className="overflow-hidden">
-                    <ProjectFilters 
+                    <ProjectFilters
                         members={projectMembers}
                         filters={filters}
                         sortBy={sortBy}
@@ -582,7 +582,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
             </div>
 
             {/* --- 3. Main Content Area --- */}
-            <div className="flex-1 flex min-h-0 relative z-0"> {/* Adjusted z-index */}
+            <div className="flex-1 flex min-h-0 relative"> {/* Adjusted z-index */}
                 {view === 'board' ? (
                     <DndContext
                         sensors={sensors}
@@ -591,76 +591,76 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                         onDragOver={handleDragOver}
                         onDragEnd={handleDragEnd}
                     >
-                            <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                                <KanbanBoard
-                                    columns={columns}
-                                    columnOrder={columnOrder}
-                                    tasks={tasks}
-                                    processedTasksMap={processedTasksMap}
-                                    onTaskClick={handleTaskClick}
-                                    onAddTask={handleAddTask}
-                                    onCreateColumn={handleCreateColumn}
-                                    activeDragType={activeDragType}
-                                    overColumnId={overColumnId}
-                                    onUpdateColumn={handleUpdateColumn}
-                                    onDeleteColumn={requestDeleteColumn}
-                                />
-                            </SortableContext>
-                            <DragOverlay>
-                                {activeDragType === 'task' && activeTask && (
-                                    <div style={{
-                                        transform: 'rotate(4deg) scale(1.05)',
-                                        width: activeTaskWidth ? `${activeTaskWidth}px` : 'auto',
-                                    }}>
-                                    <KanbanTask task={activeTask} onClick={() => {}} />
-                                    </div>
-                                )}
-                                {activeDragType === 'column' && activeColumn && (
-                                    <div style={{
-                                        transform: 'rotate(3deg)',
-                                        height: '100%',
-                                    }}>
-                                        <KanbanColumn
-                                            column={activeColumn}
-                                            tasks={processedTasksMap[activeColumn.id]}
-                                            onTaskClick={() => {}}
-                                            onAddTask={() => {}}
-                                            activeDragType={null}
-                                            overColumnId={null}
-                                            onUpdateTitle={() => {}}
-                                            onDelete={() => {}}
-                                        />
-                                    </div>
-                                )}
-                            </DragOverlay>
+                        <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                            <KanbanBoard
+                                columns={columns}
+                                columnOrder={columnOrder}
+                                tasks={tasks}
+                                processedTasksMap={processedTasksMap}
+                                onTaskClick={handleTaskClick}
+                                onAddTask={handleAddTask}
+                                onCreateColumn={handleCreateColumn}
+                                activeDragType={activeDragType}
+                                overColumnId={overColumnId}
+                                onUpdateColumn={handleUpdateColumn}
+                                onDeleteColumn={requestDeleteColumn}
+                            />
+                        </SortableContext>
+                        <DragOverlay>
+                            {activeDragType === 'task' && activeTask && (
+                                <div style={{
+                                    transform: 'rotate(4deg) scale(1.05)',
+                                    width: activeTaskWidth ? `${activeTaskWidth}px` : 'auto',
+                                }}>
+                                    <KanbanTask task={activeTask} onClick={() => { }} />
+                                </div>
+                            )}
+                            {activeDragType === 'column' && activeColumn && (
+                                <div style={{
+                                    transform: 'rotate(3deg)',
+                                    height: '100%',
+                                }}>
+                                    <KanbanColumn
+                                        column={activeColumn}
+                                        tasks={processedTasksMap[activeColumn.id]}
+                                        onTaskClick={() => { }}
+                                        onAddTask={() => { }}
+                                        activeDragType={null}
+                                        overColumnId={null}
+                                        onUpdateTitle={() => { }}
+                                        onDelete={() => { }}
+                                    />
+                                </div>
+                            )}
+                        </DragOverlay>
                     </DndContext>
                 ) : view === 'list' ? (
-                    <TasksListView 
-                        tasks={tasksWithStatus} 
+                    <TasksListView
+                        tasks={tasksWithStatus}
                         onTaskClick={handleTaskClick}
                         onToggleComplete={(task) => handleUpdateTask({ ...task, completed: !task.completed })}
                         statusOrder={statusOrder}
                     />
                 ) : view === 'calendar' ? (
-                    <CalendarView 
-                        tasks={allFilteredTasks} 
-                        onTaskClick={handleTaskClick} 
+                    <CalendarView
+                        tasks={allFilteredTasks}
+                        onTaskClick={handleTaskClick}
                     />
                 ) : view === 'stats' ? (
                     <ProjectStats project={project} members={projectMembers} />
                 ) : (
-                    <ProjectInfo 
-                        project={project} 
-                        team={team} 
+                    <ProjectInfo
+                        project={project}
+                        team={team}
                         isTeamAdmin={isTeamAdmin}
                         onUpdateProject={onUpdateProject}
                         onDeleteProject={() => onDeleteProject(project.id)}
                     />
                 )}
-                
-                <Chat 
-                    messages={project.chatMessages} 
-                    currentUser={currentUser} 
+
+                <Chat
+                    messages={project.chatMessages}
+                    currentUser={currentUser}
                     onSendMessage={handleSendMessage}
                     isCollapsed={isChatCollapsed}
                     onToggleCollapse={() => setChatCollapsed(p => !p)}
@@ -668,11 +668,11 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     onResize={setChatWidth}
                 />
             </div>
-            
+
             {/* Modals */}
             {selectedTask && (
-                <TaskModal 
-                    task={selectedTask} 
+                <TaskModal
+                    task={selectedTask}
                     onClose={handleCloseTaskModal}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
@@ -687,7 +687,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     onDeleteSubtask={handleDeleteSubtask}
                 />
             )}
-            
+
             {isCreateTaskModalOpen && columnForNewTask && (
                 <CreateTaskModal
                     onClose={() => setCreateTaskModalOpen(false)}
@@ -698,7 +698,7 @@ const ProjectPage: React.FC<ProjectPageProps> = ({ project, team, currentUser, o
                     allTags={Array.from(new Set(Object.values(tasks).flatMap((task: Task) => task.tags)))}
                 />
             )}
-            
+
             <ConfirmationModal
                 isOpen={!!columnToDelete}
                 onClose={() => setColumnToDelete(null)}

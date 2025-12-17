@@ -11,5 +11,7 @@ export { columnService } from './column.service';
 export { teamService } from './team.service';
 export { messageService } from './message.service';
 export { notificationService } from './notification.service';
+export { folderService } from './folder.service';
 export { registerForPush, unregisterPush } from './fcm';
 export { getAuthToken, setAuthToken, clearAuthToken, fetchVersion } from './http';
+

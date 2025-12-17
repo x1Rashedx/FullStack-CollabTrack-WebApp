@@ -30,7 +30,7 @@ export const taskService = {
 
     move: (taskId: string, toColumnId: string, position: number): Promise<{ columns: { [key: string]: Column } }> => {
         return apiRequest<{ columns: { [key: string]: Column } }>(`/tasks/${taskId}/move/`, {
-            method: 'PUT',
+            method: 'PATCH',
             body: JSON.stringify({
                 toColumnId,
                 position
