@@ -76,7 +76,7 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/backend
     env_file:
-    - ./backend/.env
+      - ./backend/.env
     volumes:
       - ./backend:/app/backend
     command: celery -A backend.celery:app worker -l info --concurrency=1

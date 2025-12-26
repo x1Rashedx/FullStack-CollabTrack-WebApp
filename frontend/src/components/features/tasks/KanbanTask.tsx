@@ -61,7 +61,7 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onClick }) => {
                  <div className="flex flex-col items-end gap-1">
                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${priorityColors[task.priority]}`}>{task.priority}</span>
                      <span className="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 rounded border dark:border-gray-600" title="Task Weight">
-                         {task.weight || 1}
+                        {task.weight || 1}
                      </span>
                  </div>
             </div>

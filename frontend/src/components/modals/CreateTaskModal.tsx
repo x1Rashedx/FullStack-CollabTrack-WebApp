@@ -7,7 +7,7 @@ import Avatar from '@components/common/Avatar';
 
 interface CreateTaskModalProps {
     onClose: () => void;
-    onCreateTask: (newTaskData: Omit<Task, 'id' | 'projectId'>, columnId: string) => Promise<Task>;
+    onCreateTask: (newTaskData: Omit<Task, 'id' | 'projectId' | 'subtasks' | 'createdAt' | 'updatedAt'>, columnId: string) => Promise<Task>;
     columnId: string;
     projectMembers: User[];
     allTags: string[];
